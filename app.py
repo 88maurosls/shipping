@@ -45,4 +45,5 @@ if uploaded_file is not None:
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
     )
+    st.balloons()
 
