@@ -29,17 +29,15 @@ if uploaded_file is not None:
     # Apporta le modifiche necessarie
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
-    nazione = row[' NAZIONE'].strip()  # Rimuove gli spazi bianchi prima e dopo il testo
+    nazione = row[' NAZIONE'].strip()  # Assicurati di rimuovere gli spazi bianchi se presenti
     if nazione in countrycode_dict:
         iva = countrycode_dict[nazione]
         costo_spedizione = row[' COSTI_SPEDIZIONE']
         costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-        # Formatta il costo senza IVA con due cifre decimali
         adjusted_rows.at[index, ' PREZZO_1'] = "{:.2f}".format(costo_senza_iva)
     else:
-        # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
-        # Converti a stringa per mantenere consistenza nel formato del CSV
         adjusted_rows.at[index, ' PREZZO_1'] = "{:.2f}".format(row[' COSTI_SPEDIZIONE'])
+
 
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
