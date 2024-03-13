@@ -29,7 +29,7 @@ if uploaded_file is not None:
     # Apporta le modifiche necessarie
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
-    nazione = row[' NAZIONE']
+    nazione = row[' NAZIONE'].strip()  # Rimuove gli spazi bianchi prima e dopo il testo
     if nazione in countrycode_dict:
         iva = countrycode_dict[nazione]
         costo_spedizione = row[' COSTI_SPEDIZIONE']
