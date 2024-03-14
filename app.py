@@ -19,6 +19,9 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
+
+    # Initialize vat_rows as an empty DataFrame with the same columns as df
+    vat_rows = pd.DataFrame(columns=df.columns)
     
     # Identifica le righe con COSTI_SPEDIZIONE diversi da 0
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
