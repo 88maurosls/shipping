@@ -2,14 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per calcolare il prezzo senza IVA
-def calculate_price_without_vat(costo_spedizione, iva):
-    return costo_spedizione - (costo_spedizione * iva / 100)
-
-# Funzione per calcolare l'IVA
-def calculate_vat(costo_spedizione, iva):
-    return costo_spedizione * iva / 100
-
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
@@ -38,12 +30,11 @@ if uploaded_file is not None:
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
-        add_vat_row = nazione in countrycode_dict
-        if add_vat_row:
+        if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
-            prezzo_senza_iva = calculate_price_without_vat(costo_spedizione, iva)
-            formatted_price = int(prezzo_senza_iva) if prezzo_senza_iva == int(prezzo_senza_iva) else prezzo_senza_iva
+            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
+            formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
             adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
         else:
             # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
@@ -57,38 +48,38 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
+    # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
+    vat_rows = unique_costs_rows.copy()
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
+    for index, row in vat_rows.iterrows():
+        iva = countrycode_dict[row[' NAZIONE']]
+        costo_spedizione = row[' COSTI_SPEDIZIONE']
+        costo_iva = costo_spedizione * iva / 100
+        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
-# Crea una seconda riga aggiuntiva per l'IVA solo se la nazione è nel dizionario
-vat_rows = unique_costs_rows[unique_costs_rows[' NAZIONE'].isin(countrycode_dict.keys())]
-for index, row in vat_rows.iterrows():
-    costo_spedizione = row[' COSTI_SPEDIZIONE']
-    iva = countrycode_dict[row[' NAZIONE']]
-    iva_amount = calculate_vat(costo_spedizione, iva)
-    formatted_vat = int(iva_amount) if iva_amount == int(iva_amount) else iva_amount
-    vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+    vat_rows[' COD_ART'] = "VAT"
+    vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
+    vat_rows[' DESCR_ART'] = "VAT"
+    vat_rows[' DESCR_ART_ESTESA'] = "VAT"
+    vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
+    vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
+    vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-vat_rows[' COD_ART'] = "VAT"
-vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
-vat_rows[' DESCR_ART'] = "VAT"
-vat_rows[' DESCR_ART_ESTESA'] = "VAT"
-vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
-vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
-vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+    # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
+    final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
 
-# Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
-final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
+    # Ordina il dataframe finale per NUM_DOC
+    final_df.sort_values(by=[' NUM_DOC'], inplace=True)
 
-# Ordina il dataframe finale per NUM_DOC
-final_df.sort_values(by=[' NUM_DOC'], inplace=True)
+    # Converti il dataframe finale in CSV
+    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
-# Converti il dataframe finale in CSV
-csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
-
-# Bottone per il download del file modificato
-st.download_button(
-    label="Scarica il CSV modificato",
-    data=io.BytesIO(csv),
-    file_name='modified_CLIARTFATT.csv',
-    mime='text/csv',
-)
-st.balloons()
+    # Bottone per il download del file modificato
+    st.download_button(
+        label="Scarica il CSV modificato",
+        data=io.BytesIO(csv),
+        file_name='modified_CLIARTFATT.csv',
+        mime='text/csv',
+    )
+    st.balloons()
