@@ -32,10 +32,20 @@ if uploaded_file is not None:
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
+            
+            # Calcola il costo di spedizione senza IVA
             costo_spedizione = row[' COSTI_SPEDIZIONE'] / (1 + iva / 100)
+            
+            # Calcola la somma dei 'PREZZO_1' per le righe con lo stesso 'NUM_DOC'
             somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
-            costo_iva = somma_prezzo_iva + costo_spedizione * iva / 100
-            adjusted_rows.at[index, ' PREZZO_1'] = costo_spedizione
+            
+            # Calcola la somma dei prezzi con IVA, compreso il costo di spedizione
+            somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
+            
+            # Calcola l'IVA sulla somma dei prezzi con spedizione
+            costo_iva = somma_prezzi_sped * iva / 100
+            
+            adjusted_rows.at[index, ' PREZZO_1'] = costo_iva
         else:
             # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
@@ -53,9 +63,19 @@ if uploaded_file is not None:
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
         iva = countrycode_dict[row[' NAZIONE']]
+        
+        # Calcola il costo di spedizione senza IVA
         costo_spedizione = row[' COSTI_SPEDIZIONE'] / (1 + iva / 100)
+        
+        # Calcola la somma dei 'PREZZO_1' per le righe con lo stesso 'NUM_DOC'
         somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
-        costo_iva = somma_prezzo_iva + costo_spedizione * iva / 100
+        
+        # Calcola la somma dei prezzi con IVA, compreso il costo di spedizione
+        somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
+        
+        # Calcola l'IVA sulla somma dei prezzi con spedizione
+        costo_iva = somma_prezzi_sped * iva / 100
+        
         vat_rows.at[index, ' PREZZO_1'] = costo_iva
 
     vat_rows[' COD_ART'] = "VAT"
