@@ -57,7 +57,6 @@ if uploaded_file is not None:
     # Converti il dataframe finale in CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
-
     # Bottone per il download del file modificato
     st.download_button(
         label="Scarica il CSV modificato",
