@@ -60,7 +60,7 @@ if uploaded_file is not None:
         costo_spedizione = row[' COSTI_SPEDIZIONE']
         
         # Calcola l'IVA
-        iva = countrycode_dict[row[' NAZIONE']]
+        iva = countrycode_dict.get(row[' NAZIONE'], 0)
         costo_iva = costo_spedizione * iva / 100
         
         # Calcola la somma di 'PREZZO_1' per lo stesso 'NUM_DOC' ma con 'PROGRESSIVO_RIGA' differente
@@ -76,7 +76,8 @@ if uploaded_file is not None:
     vat_rows = vat_rows.drop_duplicates(subset=[' NUM_DOC'])
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
 
-    # Calcola e aggiungi l'IVA alla riga dell'IVA stessa
+    # Crea e aggiungi l'IVA alla riga dell'IVA stessa
+    vat_rows['IVA'] = vat_rows.apply(lambda row: countrycode_dict.get(row[' NAZIONE'], 0), axis=1)
     vat_rows['IVA'] = vat_rows[' PREZZO_1'] * vat_rows['IVA'] / 100
 
     # Converti il dataframe finale in CSV
