@@ -57,18 +57,18 @@ if uploaded_file is not None:
                 iva_nazione = countrycode_dict[row[' NAZIONE']]
                 # Calcola l'importo totale dell'IVA per il NUM_DOC
                 total_vat = costs_rows[(costs_rows[' NUM_DOC'] == num_doc) & (costs_rows[' NAZIONE'] == row[' NAZIONE'])][' COSTI_SPEDIZIONE'].sum() * iva_nazione / 100
-                new_vat_row = {
-                    ' DESCR_ART_ESTESA': 'VAT',
-                    ' NUM_DOC': num_doc,
-                    ' PROGRESSIVO_RIGA': f'{num_doc}-3',
-                    ' PREZZO_1': total_vat,
-                    ' COD_ART': 'VAT',
-                    ' COD_ART_DOC': 'VAT',
-                    ' DESCR_ART': 'VAT',
-                    ' DESCRIZIONE_RIGA': 'VAT',
-                    ' HSCODE': ''
-                }
-                vat_rows = vat_rows.append(new_vat_row, ignore_index=True)
+                new_vat_row = pd.DataFrame({
+                    ' DESCR_ART_ESTESA': ['VAT'],
+                    ' NUM_DOC': [num_doc],
+                    ' PROGRESSIVO_RIGA': [f'{num_doc}-3'],
+                    ' PREZZO_1': [total_vat],
+                    ' COD_ART': ['VAT'],
+                    ' COD_ART_DOC': ['VAT'],
+                    ' DESCR_ART': ['VAT'],
+                    ' DESCRIZIONE_RIGA': ['VAT'],
+                    ' HSCODE': ['']
+                })
+                vat_rows = pd.concat([vat_rows, new_vat_row], ignore_index=True)
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
