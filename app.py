@@ -32,24 +32,10 @@ if uploaded_file is not None:
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
-            
-            # Calcola il costo di spedizione senza IVA
-            costo_spedizione = row[' COSTI_SPEDIZIONE'] / (1 + iva / 100)
-            
-            # Calcola la somma dei 'PREZZO_1' per le righe con lo stesso 'NUM_DOC'
-            somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
-            
-            # Verifica se somma_prezzo_iva e costo_spedizione sono di tipo numerico prima di eseguire l'operazione di aggiunta
-            if isinstance(somma_prezzo_iva, (int, float)) and isinstance(costo_spedizione, (int, float)):
-                somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
-            else:
-                st.error("Errore: i valori di somma_prezzo_iva e/o costo_spedizione non sono numeri.")
-                continue
-            
-            # Calcola l'IVA sulla somma dei prezzi con spedizione
-            costo_iva = somma_prezzi_sped * iva / 100
-            
-            adjusted_rows.at[index, ' PREZZO_1'] = costo_iva
+            costo_spedizione = row[' COSTI_SPEDIZIONE']
+            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
+            formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
+            adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
         else:
             # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
@@ -67,24 +53,10 @@ if uploaded_file is not None:
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
         iva = countrycode_dict[row[' NAZIONE']]
-        
-        # Calcola il costo di spedizione senza IVA
-        costo_spedizione = row[' COSTI_SPEDIZIONE'] / (1 + iva / 100)
-        
-        # Calcola la somma dei 'PREZZO_1' per le righe con lo stesso 'NUM_DOC'
-        somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
-        
-        # Verifica se somma_prezzo_iva e costo_spedizione sono di tipo numerico prima di eseguire l'operazione di aggiunta
-        if isinstance(somma_prezzo_iva, (int, float)) and isinstance(costo_spedizione, (int, float)):
-            somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
-        else:
-            st.error("Errore: i valori di somma_prezzo_iva e/o costo_spedizione non sono numeri.")
-            continue
-        
-        # Calcola l'IVA sulla somma dei prezzi con spedizione
-        costo_iva = somma_prezzi_sped * iva / 100
-        
-        vat_rows.at[index, ' PREZZO_1'] = costo_iva
+        costo_spedizione = row[' COSTI_SPEDIZIONE']
+        costo_iva = costo_spedizione * iva / 100
+        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
     vat_rows[' COD_ART'] = "VAT"
     if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
