@@ -2,51 +2,58 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per calcolare il prezzo senza IVA
+# Function for calculating price without VAT
 def calculate_price_without_vat(costo_spedizione, iva):
     return costo_spedizione - (costo_spedizione * iva / 100)
 
-# Funzione per calcolare l'IVA
+# Function for calculating VAT
 def calculate_vat(costo_spedizione, iva):
     return costo_spedizione * iva / 100
 
-# Titolo dell'applicazione Streamlit
+# Streamlit app title
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
-# Caricamento del file tramite drag-and-drop
+# File upload for CSV
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
-    # Lettura del file caricato
-    df = pd.read_csv(uploaded_file, delimiter=';')
+    # Read uploaded file
+    try:
+        df = pd.read_csv(uploaded_file, delimiter=';')
+    except Exception as e:  # Handle potential errors reading the CSV
+        st.error(f"Errore nella lettura del file CSV: {e}")
+        continue
 
-    # Leggi il file countrycode.txt e crea un dizionario
+    # Read countrycode.txt and create dictionary (assuming correct path)
     try:
         countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None)
         countrycode_dict = dict(zip(countrycode_df[0], countrycode_df[2]))
-    except Exception as e:
+    except Exception as e:  # Handle potential errors reading countrycode.txt
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
-        countrycode_dict = {}
+        countrycode_dict = {}  # Set an empty dictionary to avoid further errors
 
-    # Identifica le righe con COSTI_SPEDIZIONE diversi da 0
+    # Identify rows with non-zero COSTI_SPEDIZIONE
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
 
-    # Filtra le righe uniche basate su NUM_DOC
+    # Filter unique rows based on NUM_DOC
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
 
-    # Apporta le modifiche necessarie per le righe degli Shipping Costs
+    # Modify rows for Shipping Costs
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
-        add_vat_row = nazione in countrycode_dict
+        add_vat_row = nazione in countrycode_dict  # Check if nation exists in dictionary
+
+        # **Crucial Correction:** Access the dictionary key using `keys()`
         if add_vat_row:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
             prezzo_senza_iva = calculate_price_without_vat(costo_spedizione, iva)
             formatted_price = int(prezzo_senza_iva) if prezzo_senza_iva == int(prezzo_senza_iva) else prezzo_senza_iva
             adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
+
         else:
-            # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
+            # Maintain original COSTI_SPEDIZIONE if nation is not in dictionary
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
