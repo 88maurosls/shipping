@@ -48,26 +48,28 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-    # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni nel countrycode.txt
-vat_rows = pd.DataFrame(columns=df.columns)  # Crea un DataFrame vuoto con le stesse colonne di df
-for index, row in unique_costs_rows.iterrows():
-    if row[' NAZIONE'] in countrycode_dict:
-        iva = countrycode_dict[row[' NAZIONE']]
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        costo_iva = costo_spedizione * iva / 100
-        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-        new_row = row.to_frame().T  # Converti la riga in un DataFrame con una singola riga
-        new_row[' COD_ART'] = "VAT"
-        new_row[' COD_ART_DOC'] = "VAT"
-        new_row[' DESCR_ART'] = "VAT"
-        new_row[' DESCR_ART_ESTESA'] = "VAT"
-        new_row[' DESCRIZIONE_RIGA'] = "VAT"
-        new_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-3"
-        new_row[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-        new_row[' PREZZO_1'] = formatted_vat
-        vat_rows = vat_rows.append(new_row, ignore_index=True)
+    # Crea una lista di dizionari per le righe VAT
+    vat_rows_data = []
+    for index, row in unique_costs_rows.iterrows():
+        if row[' NAZIONE'] in countrycode_dict:
+            iva = countrycode_dict[row[' NAZIONE']]
+            costo_spedizione = row[' COSTI_SPEDIZIONE']
+            costo_iva = costo_spedizione * iva / 100
+            formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+            new_row = {
+                ' COD_ART': 'VAT',
+                ' COD_ART_DOC': 'VAT',
+                ' DESCR_ART': 'VAT',
+                ' DESCR_ART_ESTESA': 'VAT',
+                ' DESCRIZIONE_RIGA': 'VAT',
+                ' PROGRESSIVO_RIGA': f"{row[' PROGRESSIVO_RIGA']}-3",
+                ' HSCODE': '',
+                ' PREZZO_1': formatted_vat,
+            }
+            vat_rows_data.append(new_row)
 
-
+    # Converti la lista di dizionari in un DataFrame
+    vat_rows = pd.DataFrame(vat_rows_data)
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
