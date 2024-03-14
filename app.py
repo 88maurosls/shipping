@@ -74,6 +74,13 @@ if uploaded_file is not None:
         num_doc = shipping_row[' NUM_DOC']
         same_doc_rows = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].astype(str).str.endswith("-2"))]
         total_shipping_cost = same_doc_rows[' PREZZO_1'].sum()
+        
+        # Stampa o visualizza i valori utilizzati durante il calcolo
+        print(f"Numero documento: {num_doc}")
+        print(f"Totale costi di spedizione: {total_shipping_cost}")
+        print("Same doc rows:")
+        print(same_doc_rows)
+        
         if num_doc in countrycode_dict:
             iva = countrycode_dict[num_doc]
             iva_amount = total_shipping_cost * iva / 100
