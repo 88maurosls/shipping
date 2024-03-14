@@ -59,9 +59,9 @@ if uploaded_file is not None:
             iva = countrycode_dict[nazione]
             # Calcola il totale basato sullo stesso NUM_DOC
             num_doc = row[' NUM_DOC']
-            prezzo_originale = df[df[' NUM_DOC'] == num_doc][' PREZZO_1'].sum()
-            # Trova il costo di spedizione dalla riga degli Shipping Costs
-            costo_spedizione = adjusted_rows[adjusted_rows[' NUM_DOC'] == num_doc][' PREZZO_1'].iloc[0]
+            prezzo_spedizione = adjusted_rows[adjusted_rows[' NUM_DOC'] == num_doc][' PREZZO_1'].iloc[0]
+            # Trova il prezzo originale sommando tutti i 'PREZZO_1' basati sullo stesso NUM_DOC
+            prezzo_originale = df[df[' NUM_DOC'] == num_doc][' PREZZO_1'].sum() - prezzo_spedizione
             # Calcola l'IVA
             vat_amount = prezzo_originale * iva / 100
             formatted_vat = int(vat_amount) if vat_amount == int(vat_amount) else vat_amount
