@@ -56,7 +56,7 @@ for index, row in unique_costs_rows.iterrows():
         costo_spedizione = row[' COSTI_SPEDIZIONE']
         costo_iva = costo_spedizione * iva / 100
         formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-        new_row = row.copy()
+        new_row = row.to_frame().T  # Converti la riga in un DataFrame con una singola riga
         new_row[' COD_ART'] = "VAT"
         new_row[' COD_ART_DOC'] = "VAT"
         new_row[' DESCR_ART'] = "VAT"
@@ -66,6 +66,7 @@ for index, row in unique_costs_rows.iterrows():
         new_row[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
         new_row[' PREZZO_1'] = formatted_vat
         vat_rows = vat_rows.append(new_row, ignore_index=True)
+
 
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
