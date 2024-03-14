@@ -26,7 +26,8 @@ if uploaded_file is not None:
         lambda x: x[' COSTI_SPEDIZIONE'] / (1 + countrycode_dict.get(x[' NAZIONE'], 0) / 100) if x[' NAZIONE'] in countrycode_dict else x[' COSTI_SPEDIZIONE'],
         axis=1
     )
-    shipping_rows[' COD_ART'] = shipping_rows.index.map(lambda x: f"SHIPPINGCOSTS{x}")
+    shipping_rows[' COD_ART'] = "SHIPPINGCOSTS"
+    shipping_rows[' COD_ART_DOC'] = "SHIPPINGCOSTS"
     shipping_rows[' DESCR_ART'] = "Shipping Costs"
     shipping_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
     shipping_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
@@ -40,6 +41,7 @@ if uploaded_file is not None:
         axis=1
     )
     vat_rows[' COD_ART'] = "VAT"
+    vat_rows[' COD_ART_DOC'] = "VAT"
     vat_rows[' DESCR_ART'] = "VAT"
     vat_rows[' DESCR_ART_ESTESA'] = "VAT"
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
