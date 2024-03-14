@@ -70,18 +70,18 @@ if uploaded_file is not None:
     vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
     # Calcola il valore della riga VAT
-for index, shipping_row in adjusted_rows.iterrows():
-    num_doc = shipping_row[' NUM_DOC']
-    same_doc_rows = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'] != shipping_row[' PROGRESSIVO_RIGA'])]
-    total_shipping_cost = same_doc_rows[' PREZZO_1'].sum()
-    if num_doc in countrycode_dict:
-        iva = countrycode_dict[num_doc]
-        iva_amount = total_shipping_cost * iva / 100
-        formatted_iva_amount = int(iva_amount) if iva_amount == int(iva_amount) else iva_amount
-        vat_rows.at[index, ' PREZZO_1'] = formatted_iva_amount
-    else:
-        # Se il paese non è nel dizionario, impostare l'IVA a zero
-        vat_rows.at[index, ' PREZZO_1'] = 0
+    for index, shipping_row in adjusted_rows.iterrows():
+        num_doc = shipping_row[' NUM_DOC']
+        same_doc_rows = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].str.endswith("-2"))]
+        total_shipping_cost = same_doc_rows[' PREZZO_1'].sum()
+        if num_doc in countrycode_dict:
+            iva = countrycode_dict[num_doc]
+            iva_amount = total_shipping_cost * iva / 100
+            formatted_iva_amount = int(iva_amount) if iva_amount == int(iva_amount) else iva_amount
+            vat_rows.at[index, ' PREZZO_1'] = formatted_iva_amount
+        else:
+            # Se il paese non è nel dizionario, impostare l'IVA a zero
+            vat_rows.at[index, ' PREZZO_1'] = 0
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
@@ -94,9 +94,10 @@ for index, shipping_row in adjusted_rows.iterrows():
 
     # Bottone per il download del file modificato
     st.download_button(
-    label="Scarica il CSV modificato",
-    data=io.BytesIO(csv),
-    file_name='modified_CLIARTFATT.csv',
-    mime='text/csv',
-    key="download_button"  # Aggiungi una chiave univoca per evitare ID duplicati
-)
+        label="Scarica il CSV modificato",
+        data=io.BytesIO(csv),
+        file_name='modified_CLIARTFATT.csv',
+        mime='text/csv',
+        key="download_button_unique"  # Specifica una chiave univoca per il widget di download
+    )
+    st.balloons()
