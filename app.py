@@ -55,7 +55,7 @@ if uploaded_file is not None:
     final_df.sort_values(by=[' NUM_DOC'], inplace=True)
 
     # Converti il dataframe finale in CSV
-    csv = final_df.to_csv(sep=';', index=False).encode('utf-8')
+    csv = final_df.to_csv(sep=';', index=False, decimal=',').encode('utf-8')
 
     # Bottone per il download del file modificato
     st.download_button(
