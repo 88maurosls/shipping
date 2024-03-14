@@ -48,6 +48,9 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
+    # Creare un DataFrame vuoto per le righe VAT
+    vat_rows = pd.DataFrame()
+
     # Creare un dizionario per tenere traccia dei totali delle spese di spedizione per ogni combinazione di NUM_DOC e PROGRESSIVO_RIGA
     total_shipping_costs = {}
 
@@ -57,7 +60,6 @@ if uploaded_file is not None:
         total_shipping_costs[key] = total_shipping_costs.get(key, 0) + row[' COSTI_SPEDIZIONE']
 
     # Aggiungere le righe VAT basate sui totali calcolati
-    vat_rows = pd.DataFrame(columns=df.columns)
     for key, total_shipping_cost in total_shipping_costs.items():
         num_doc, progressivo_riga = key
         nazione = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'] == progressivo_riga)].iloc[0][' NAZIONE']
@@ -66,7 +68,7 @@ if uploaded_file is not None:
             iva = countrycode_dict[nazione]
             vat_amount = total_shipping_cost * iva / 100
             formatted_vat = int(vat_amount) if vat_amount == int(vat_amount) else vat_amount
-    
+
             vat_row = {
                 ' DESCR_ART_ESTESA': 'VAT',
                 ' NUM_DOC': num_doc,
