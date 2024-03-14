@@ -29,15 +29,15 @@ if uploaded_file is not None:
     # Apporta le modifiche necessarie
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
-        nazione = row[' NAZIONE']
-        if nazione in countrycode_dict:
-            iva = countrycode_dict[nazione]
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            adjusted_rows.at[index, ' PREZZO_1'] = costo_senza_iva
-        else:
-            # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
-            adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
+    nazione = row[' NAZIONE']
+    if nazione in countrycode_dict:
+        iva = countrycode_dict[nazione]
+        costo_spedizione = row[' COSTI_SPEDIZIONE']
+        costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
+        costo_senza_iva_arrotondato = int(round(costo_senza_iva, 0))  # Arrotonda e converte in intero
+        adjusted_rows.at[index, ' PREZZO_1'] = costo_senza_iva_arrotondato
+    else:
+        adjusted_rows.at[index, ' PREZZO_1'] = int(round(row[' COSTI_SPEDIZIONE'], 0))  # Arrotonda e converte in intero
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
     adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
