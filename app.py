@@ -39,6 +39,12 @@ if uploaded_file is not None:
             formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
             adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
 
+            # Verifica che ' PROGRESSIVO_RIGA' esista e abbia un valore valido
+            if ' PROGRESSIVO_RIGA' in row and pd.notnull(row[' PROGRESSIVO_RIGA']):
+                progressivo_riga = str(row[' PROGRESSIVO_RIGA'])
+            else:
+                progressivo_riga = "Unknown"
+
             # Aggiungi una riga per l'IVA
             vat_row = row.copy()
             costo_iva = costo_spedizione * iva / 100
@@ -49,7 +55,7 @@ if uploaded_file is not None:
             vat_row[' DESCR_ART'] = "VAT"
             vat_row[' DESCR_ART_ESTESA'] = "VAT"
             vat_row[' DESCRIZIONE_RIGA'] = "VAT"
-            vat_row[' PROGRESSIVO_RIGA'] = vat_row[' PROGRESSIVO_RIGA'].astype(str) + "-3"
+            vat_row[' PROGRESSIVO_RIGA'] = progressivo_riga + "-3"
             vat_row[' HSCODE'] = ""
             vat_rows = vat_rows.append(vat_row, ignore_index=True)
         else:
