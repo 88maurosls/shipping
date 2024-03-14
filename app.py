@@ -52,44 +52,26 @@ if uploaded_file is not None:
     vat_rows = unique_costs_rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
-        iva = countrycode_dict[row[' NAZIONE']]
+        num_doc = row[' NUM_DOC']
         costo_spedizione = row[' COSTI_SPEDIZIONE']
-        costo_iva = costo_spedizione * iva / 100
-        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+        costo_iva = costo_spedizione * countrycode_dict[row[' NAZIONE']] / 100
+        
+        # Somma 'PREZZO_1' delle righe dello Shipping Costs con lo stesso 'NUM_DOC'
+        shipping_costs_total = adjusted_rows.loc[adjusted_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'].sum()
+        
+        # Calcola il totale della VAT come somma dei costi di spedizione e iva
+        vat_total = shipping_costs_total + costo_iva
+        
+        # Formatta il totale dell'IVA come richiesto
+        formatted_vat_total = int(vat_total) if vat_total == int(vat_total) else vat_total
+        
+        # Aggiorna 'PREZZO_1' nella riga dell'IVA
+        vat_rows.at[index, ' PREZZO_1'] = formatted_vat_total
 
-    vat_rows[' COD_ART'] = "VAT"
-    if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
-        vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
-    else:
-        st.error("La colonna 'COD_ART' non è presente nel DataFrame 'vat_rows'. Assicurati che sia stata correttamente definita.")
-    vat_rows[' DESCR_ART'] = "VAT"
-    vat_rows[' DESCR_ART_ESTESA'] = "VAT"
-    vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
+    # Rimuovi righe duplicati e aggiungi ' PROGRESSIVO_RIGA' corretto
+    vat_rows = vat_rows.drop_duplicates(subset=[' NUM_DOC'])
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
-    vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-
-    # Calcola il valore della riga VAT
-    for index, shipping_row in adjusted_rows.iterrows():
-        num_doc = shipping_row[' NUM_DOC']
-        same_doc_rows = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].astype(str).str.endswith("-2"))]
-        total_shipping_cost = same_doc_rows[' PREZZO_1'].sum()
-        
-        # Stampa o visualizza i valori utilizzati durante il calcolo
-        print(f"Numero documento: {num_doc}")
-        print(f"Totale costi di spedizione: {total_shipping_cost}")
-        print("Same doc rows:")
-        print(same_doc_rows)
-        
-        if num_doc in countrycode_dict:
-            iva = countrycode_dict[num_doc]
-            iva_amount = total_shipping_cost * iva / 100
-            formatted_iva_amount = int(iva_amount) if iva_amount == int(iva_amount) else iva_amount
-            vat_rows.at[index, ' PREZZO_1'] = formatted_iva_amount
-        else:
-            # Se il paese non è nel dizionario, impostare l'IVA a zero
-            vat_rows.at[index, ' PREZZO_1'] = 0
-
+    
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
 
@@ -105,6 +87,5 @@ if uploaded_file is not None:
         data=io.BytesIO(csv),
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
-        key="download_button_unique"  # Specifica una chiave univoca per il widget di download
     )
     st.balloons()
