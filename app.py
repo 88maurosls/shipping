@@ -56,14 +56,18 @@ if uploaded_file is not None:
 
     # Calcolare l'IVA per ogni NUM_DOC
     for num_doc in unique_costs_rows[' NUM_DOC'].unique():
-        total_price = total_product_price[num_doc]
-        shipping_cost = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' COSTI_SPEDIZIONE'].iloc[0]
-        total_price += shipping_cost
-        country = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' NAZIONE'].iloc[0]
-        iva_percentage = countrycode_dict.get(country, 0)
-        iva_amount = total_price * iva_percentage / 100
-        vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = iva_amount
+    total_price = total_product_price[num_doc]
+    shipping_cost = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' COSTI_SPEDIZIONE'].iloc[0]
 
+    # Assicurarsi che total_price e shipping_cost siano numeri
+    total_price = float(total_price) if isinstance(total_price, str) else total_price
+    shipping_cost = float(shipping_cost.replace(',', '.')) if isinstance(shipping_cost, str) else shipping_cost
+
+    total_price += shipping_cost
+    country = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' NAZIONE'].iloc[0]
+    iva_percentage = countrycode_dict.get(country, 0)
+    iva_amount = total_price * iva_percentage / 100
+    vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = iva_amount
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
     vat_rows[' DESCR_ART'] = "VAT"
