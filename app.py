@@ -59,7 +59,10 @@ if uploaded_file is not None:
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
     vat_rows[' COD_ART'] = "VAT"
-    vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
+    if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
+        vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
+    else:
+        st.error("La colonna 'COD_ART' non è presente nel DataFrame 'vat_rows'. Assicurati che sia stata correttamente definita.")
     vat_rows[' DESCR_ART'] = "VAT"
     vat_rows[' DESCR_ART_ESTESA'] = "VAT"
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
