@@ -27,36 +27,36 @@ if uploaded_file is not None:
     vat_rows = df[df[' NAZIONE'].isin(countrycode_dict)]
 
     # Modifica le righe degli Shipping Costs
-    for index, row in shipping_rows.iterrows():
-        nazione = row[' NAZIONE']
-        if nazione in countrycode_dict:
-            iva = countrycode_dict[nazione]
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
-            row[' PREZZO_1'] = formatted_price
-        else:
-            row[' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
-        row[' COD_ART'] = f"SHIPPINGCOSTS{index}"
-        row[' DESCR_ART'] = "Shipping Costs"
-        row[' DESCR_ART_ESTESA'] = "Shipping Costs"
-        row[' DESCRIZIONE_RIGA'] = "Shipping Costs"
-        row[' PROGRESSIVO_RIGA'] += "-2"
-        row[' HSCODE'] = ""
+for index, row in shipping_rows.iterrows():
+    nazione = row[' NAZIONE']
+    if nazione in countrycode_dict:
+        iva = countrycode_dict[nazione]
+        costo_spedizione = row[' COSTI_SPEDIZIONE']
+        costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
+        formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
+        df.at[index, ' PREZZO_1'] = formatted_price
+    else:
+        df.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
+    df.at[index, ' COD_ART'] = f"SHIPPINGCOSTS{index}"
+    df.at[index, ' DESCR_ART'] = "Shipping Costs"
+    df.at[index, ' DESCR_ART_ESTESA'] = "Shipping Costs"
+    df.at[index, ' DESCRIZIONE_RIGA'] = "Shipping Costs"
+    df.at[index, ' PROGRESSIVO_RIGA'] += "-2"
+    df.at[index, ' HSCODE'] = ""
 
-    # Modifica le righe del VAT
-    for index, row in vat_rows.iterrows():
-        iva = countrycode_dict[row[' NAZIONE']]
-        costo_spedizione = row[' PREZZO_1']
-        costo_iva = costo_spedizione * iva / 100
-        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-        row[' PREZZO_1'] = formatted_vat
-        row[' COD_ART'] = "VAT"
-        row[' DESCR_ART'] = "VAT"
-        row[' DESCR_ART_ESTESA'] = "VAT"
-        row[' DESCRIZIONE_RIGA'] = "VAT"
-        row[' PROGRESSIVO_RIGA'] += "-3"
-        row[' HSCODE'] = ""
+# Modifica le righe del VAT
+for index, row in vat_rows.iterrows():
+    iva = countrycode_dict[row[' NAZIONE']]
+    costo_spedizione = row[' PREZZO_1']
+    costo_iva = costo_spedizione * iva / 100
+    formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+    df.at[index, ' PREZZO_1'] = formatted_vat
+    df.at[index, ' COD_ART'] = "VAT"
+    df.at[index, ' DESCR_ART'] = "VAT"
+    df.at[index, ' DESCR_ART_ESTESA'] = "VAT"
+    df.at[index, ' DESCRIZIONE_RIGA'] = "VAT"
+    df.at[index, ' PROGRESSIVO_RIGA'] += "-3"
+    df.at[index, ' HSCODE'] = ""
 
     # Combina le righe degli Shipping Costs e del VAT con il DataFrame originale
     final_df = pd.concat([df, shipping_rows, vat_rows], ignore_index=True)
