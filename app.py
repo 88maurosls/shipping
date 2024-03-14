@@ -2,70 +2,51 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Function for calculating price without VAT
+# Funzione per calcolare il prezzo senza IVA
 def calculate_price_without_vat(costo_spedizione, iva):
     return costo_spedizione - (costo_spedizione * iva / 100)
 
-# Function for calculating VAT
+# Funzione per calcolare l'IVA
 def calculate_vat(costo_spedizione, iva):
     return costo_spedizione * iva / 100
 
-# Streamlit app title
+# Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
-# File upload for CSV
+# Caricamento del file tramite drag-and-drop
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
-    # Read uploaded file
-    try:
-        df = pd.read_csv(uploaded_file, delimiter=';')
-    except Exception as e:  # Handle potential errors reading the CSV
-        st.error(f"Errore nella lettura del file CSV: {e}")
-        continue
+    # Lettura del file caricato
+    df = pd.read_csv(uploaded_file, delimiter=';')
 
-    # Read countrycode.txt and create dictionary (assuming correct path)
+    # Leggi il file countrycode.txt e crea un dizionario
     try:
         countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None)
         countrycode_dict = dict(zip(countrycode_df[0], countrycode_df[2]))
-    except Exception as e:  # Handle potential errors reading countrycode.txt
+    except Exception as e:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
-        countrycode_dict = {}  # Set an empty dictionary to avoid further errors
+        countrycode_dict = {}
 
-    # Identify rows with non-zero COSTI_SPEDIZIONE
+    # Identifica le righe con COSTI_SPEDIZIONE diversi da 0
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
+
+    # Filtra le righe uniche basate su NUM_DOC
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
 
-    # Loop through unique_costs_rows
-for index, row in unique_costs_rows.iterrows():
-    nazione = row[' NAZIONE']
-    add_vat_row = nazione in countrycode_dict
-
-    if add_vat_row:
-        # ... (Your code to calculate and update adjusted_rows)
-    else:
-        # Skip processing for this iteration if nation is not in dictionary
-        continue  # Move the 'continue' statement inside the loop
-
-    # Filter unique rows based on NUM_DOC
-    unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
-
-    # Modify rows for Shipping Costs
+    # Apporta le modifiche necessarie per le righe degli Shipping Costs
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
-        add_vat_row = nazione in countrycode_dict  # Check if nation exists in dictionary
-
-        # **Crucial Correction:** Access the dictionary key using `keys()`
+        add_vat_row = nazione in countrycode_dict
         if add_vat_row:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
             prezzo_senza_iva = calculate_price_without_vat(costo_spedizione, iva)
             formatted_price = int(prezzo_senza_iva) if prezzo_senza_iva == int(prezzo_senza_iva) else prezzo_senza_iva
             adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
-
         else:
-            # Maintain original COSTI_SPEDIZIONE if nation is not in dictionary
+            # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
@@ -75,6 +56,7 @@ for index, row in unique_costs_rows.iterrows():
     adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+
 
 # Crea una seconda riga aggiuntiva per l'IVA solo se la nazione è nel dizionario
 vat_rows = unique_costs_rows[unique_costs_rows[' NAZIONE'].isin(countrycode_dict.keys())]
