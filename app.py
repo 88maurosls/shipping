@@ -39,8 +39,12 @@ if uploaded_file is not None:
             # Calcola la somma dei 'PREZZO_1' per le righe con lo stesso 'NUM_DOC'
             somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
             
-            # Calcola la somma dei prezzi con IVA, compreso il costo di spedizione
-            somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
+            # Verifica se somma_prezzo_iva e costo_spedizione sono di tipo numerico prima di eseguire l'operazione di aggiunta
+            if isinstance(somma_prezzo_iva, (int, float)) and isinstance(costo_spedizione, (int, float)):
+                somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
+            else:
+                st.error("Errore: i valori di somma_prezzo_iva e/o costo_spedizione non sono numeri.")
+                continue
             
             # Calcola l'IVA sulla somma dei prezzi con spedizione
             costo_iva = somma_prezzi_sped * iva / 100
@@ -70,8 +74,12 @@ if uploaded_file is not None:
         # Calcola la somma dei 'PREZZO_1' per le righe con lo stesso 'NUM_DOC'
         somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
         
-        # Calcola la somma dei prezzi con IVA, compreso il costo di spedizione
-        somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
+        # Verifica se somma_prezzo_iva e costo_spedizione sono di tipo numerico prima di eseguire l'operazione di aggiunta
+        if isinstance(somma_prezzo_iva, (int, float)) and isinstance(costo_spedizione, (int, float)):
+            somma_prezzi_sped = somma_prezzo_iva + costo_spedizione
+        else:
+            st.error("Errore: i valori di somma_prezzo_iva e/o costo_spedizione non sono numeri.")
+            continue
         
         # Calcola l'IVA sulla somma dei prezzi con spedizione
         costo_iva = somma_prezzi_sped * iva / 100
