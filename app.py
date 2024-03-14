@@ -37,7 +37,6 @@ if uploaded_file is not None:
             formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
             adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
         else:
-            # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
@@ -53,17 +52,17 @@ if uploaded_file is not None:
 
     # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
     vat_rows = unique_costs_rows.copy()
-    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
     # Calcolare l'IVA per ogni NUM_DOC
     for num_doc in unique_costs_rows[' NUM_DOC'].unique():
-    total_price = total_product_price[num_doc]
-    shipping_cost = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' COSTI_SPEDIZIONE'].iloc[0]
-    total_price += shipping_cost
-    country = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' NAZIONE'].iloc[0]
-    iva_percentage = countrycode_dict.get(country, 0)
-    iva_amount = total_price * iva_percentage / 100
-    vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = iva_amount
+        total_price = total_product_price[num_doc]
+        shipping_cost = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' COSTI_SPEDIZIONE'].iloc[0]
+        total_price += shipping_cost
+        country = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' NAZIONE'].iloc[0]
+        iva_percentage = countrycode_dict.get(country, 0)
+        iva_amount = total_price * iva_percentage / 100
+        vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = iva_amount
 
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
