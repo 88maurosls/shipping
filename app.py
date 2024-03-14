@@ -26,47 +26,50 @@ if uploaded_file is not None:
     # Filtra le righe uniche basate su NUM_DOC
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
 
-    # Inizializza una lista per le righe VAT
-    vat_rows_list = []
+    # Apporta le modifiche necessarie
+    adjusted_rows = unique_costs_rows.copy()
+    vat_rows = pd.DataFrame(columns=adjusted_rows.columns)  # Inizializza un DataFrame vuoto per le righe IVA
 
-    for index, row in unique_costs_rows.iterrows():
+    for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
             costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
             formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
-            row[' PREZZO_1'] = formatted_price
-            row[' COD_ART'] = row[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
-            row[' COD_ART_DOC'] = row[' COD_ART']
-            row[' DESCR_ART'] = "Shipping Costs"
-            row[' DESCR_ART_ESTESA'] = "Shipping Costs"
-            row[' DESCRIZIONE_RIGA'] = "Shipping Costs"
-            row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-2"
-            row[' HSCODE'] = ""
-            unique_costs_rows.at[index] = row
+            adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
 
             # Crea una riga per l'IVA
             vat_row = row.copy()
             costo_iva = costo_spedizione * iva / 100
             formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
             vat_row[' PREZZO_1'] = formatted_vat
-            vat_row[' COD_ART'] = "VAT"
-            vat_row[' COD_ART_DOC'] = "VAT"
+            vat_row[' COD_ART'] = f"VAT{costo_spedizione}"
+            vat_row[' COD_ART_DOC'] = vat_row[' COD_ART']
             vat_row[' DESCR_ART'] = "VAT"
             vat_row[' DESCR_ART_ESTESA'] = "VAT"
             vat_row[' DESCRIZIONE_RIGA'] = "VAT"
-            vat_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-3"
+            vat_row[' PROGRESSIVO_RIGA'] = vat_row[' PROGRESSIVO_RIGA'].astype(str) + "-3"
             vat_row[' HSCODE'] = ""
-            vat_rows_list.append(vat_row)
+            vat_rows = vat_rows.append(vat_row, ignore_index=True)
+        else:
+            # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
+            adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
-    # Converte la lista in un DataFrame e unisci con il DataFrame originale
-    vat_rows = pd.DataFrame(vat_rows_list)
-    final_df = pd.concat([df, unique_costs_rows, vat_rows], ignore_index=True)
+    adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
+    adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
+    adjusted_rows[' DESCR_ART'] = "Shipping Costs"
+    adjusted_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
+    adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
+    adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
+    adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+
+    # Aggiungi le righe modificate e le righe IVA al dataframe originale
+    final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
 
     # Ordina il dataframe finale per NUM_DOC
     final_df.sort_values(by=[' NUM_DOC'], inplace=True)
-
+    
     # Converti il dataframe finale in CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
