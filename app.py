@@ -94,9 +94,9 @@ for index, shipping_row in adjusted_rows.iterrows():
 
     # Bottone per il download del file modificato
     st.download_button(
-        label="Scarica il CSV modificato",
-        data=io.BytesIO(csv),
-        file_name='modified_CLIARTFATT.csv',
-        mime='text/csv',
-    )
-    st.balloons()
+    label="Scarica il CSV modificato",
+    data=io.BytesIO(csv),
+    file_name='modified_CLIARTFATT.csv',
+    mime='text/csv',
+    key="download_button"  # Aggiungi una chiave univoca per evitare ID duplicati
+)
