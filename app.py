@@ -34,15 +34,15 @@ for index, row in shipping_rows.iterrows():
         costo_spedizione = row[' COSTI_SPEDIZIONE']
         costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
         formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
-        df.at[index, ' PREZZO_1'] = formatted_price
+        df.loc[index, ' PREZZO_1'] = formatted_price
     else:
-        df.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
-    df.at[index, ' COD_ART'] = f"SHIPPINGCOSTS{index}"
-    df.at[index, ' DESCR_ART'] = "Shipping Costs"
-    df.at[index, ' DESCR_ART_ESTESA'] = "Shipping Costs"
-    df.at[index, ' DESCRIZIONE_RIGA'] = "Shipping Costs"
-    df.at[index, ' PROGRESSIVO_RIGA'] += "-2"
-    df.at[index, ' HSCODE'] = ""
+        df.loc[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
+    df.loc[index, ' COD_ART'] = f"SHIPPINGCOSTS{index}"
+    df.loc[index, ' DESCR_ART'] = "Shipping Costs"
+    df.loc[index, ' DESCR_ART_ESTESA'] = "Shipping Costs"
+    df.loc[index, ' DESCRIZIONE_RIGA'] = "Shipping Costs"
+    df.loc[index, ' PROGRESSIVO_RIGA'] = df.loc[index, ' PROGRESSIVO_RIGA'] + "-2"
+    df.loc[index, ' HSCODE'] = ""
 
 # Modifica le righe del VAT
 for index, row in vat_rows.iterrows():
@@ -50,13 +50,14 @@ for index, row in vat_rows.iterrows():
     costo_spedizione = row[' PREZZO_1']
     costo_iva = costo_spedizione * iva / 100
     formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-    df.at[index, ' PREZZO_1'] = formatted_vat
-    df.at[index, ' COD_ART'] = "VAT"
-    df.at[index, ' DESCR_ART'] = "VAT"
-    df.at[index, ' DESCR_ART_ESTESA'] = "VAT"
-    df.at[index, ' DESCRIZIONE_RIGA'] = "VAT"
-    df.at[index, ' PROGRESSIVO_RIGA'] += "-3"
-    df.at[index, ' HSCODE'] = ""
+    df.loc[index, ' PREZZO_1'] = formatted_vat
+    df.loc[index, ' COD_ART'] = "VAT"
+    df.loc[index, ' DESCR_ART'] = "VAT"
+    df.loc[index, ' DESCR_ART_ESTESA'] = "VAT"
+    df.loc[index, ' DESCRIZIONE_RIGA'] = "VAT"
+    df.loc[index, ' PROGRESSIVO_RIGA'] = df.loc[index, ' PROGRESSIVO_RIGA'] + "-3"
+    df.loc[index, ' HSCODE'] = ""
+
 
     # Combina le righe degli Shipping Costs e del VAT con il DataFrame originale
     final_df = pd.concat([df, shipping_rows, vat_rows], ignore_index=True)
