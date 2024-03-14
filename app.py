@@ -1,3 +1,5 @@
+#aggiunta riga VAT per ordini europei
+
 import streamlit as st
 import pandas as pd
 import io
@@ -48,13 +50,15 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-    # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
+    # Calcola il valore 'RIGA_1' correttamente per le righe dell'IVA
     vat_rows = unique_costs_rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
         iva = countrycode_dict[row[' NAZIONE']]
         costo_spedizione = row[' COSTI_SPEDIZIONE']
-        costo_iva = costo_spedizione * iva / 100
+        prezzo_articolo = row[' PREZZO_ARTICOLO']  # Aggiunto per ottenere il prezzo dell'articolo
+        costo_senza_iva = costo_spedizione + prezzo_articolo  # Calcolo del costo senza IVA
+        costo_iva = costo_senza_iva * iva / 100
         formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
