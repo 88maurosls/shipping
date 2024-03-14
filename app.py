@@ -26,6 +26,9 @@ if uploaded_file is not None:
     # Filtra le righe uniche basate su NUM_DOC
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
 
+    # Calcola la somma dei 'PREZZO_1' delle righe Shipping Costs per ogni NUM_DOC
+    shipping_costs_sum = df[df[' PROGRESSIVO_RIGA'].str.contains('-2')].groupby(' NUM_DOC')[' PREZZO_1'].sum()
+
     # Apporta le modifiche necessarie per le righe degli Shipping Costs
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
@@ -49,21 +52,20 @@ if uploaded_file is not None:
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
     # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
-vat_rows = unique_costs_rows.copy()
-vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
-for index, row in vat_rows.iterrows():
-    num_doc = row[' NUM_DOC']
-    iva_nazione = countrycode_dict[row[' NAZIONE']]
-    
-    # Calcola la somma dei 'PREZZO_1' delle righe Shipping Costs con lo stesso 'NUM_DOC'
-    sum_shipping_costs = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].astype(str).str.contains('-2'))][' PREZZO_1'].sum()
-    
-    # Calcola l'importo dell'IVA sulla somma dei costi di spedizione
-    vat_amount = sum_shipping_costs * iva_nazione / 100
-    
-    # Assegna l'importo dell'IVA alla colonna 'PREZZO_1' della riga dell'IVA
-    vat_rows.at[index, ' PREZZO_1'] = vat_amount
-
+    vat_rows = unique_costs_rows.copy()
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
+    for index, row in vat_rows.iterrows():
+        num_doc = row[' NUM_DOC']
+        iva_nazione = countrycode_dict[row[' NAZIONE']]
+        
+        # Ottieni la somma dei costi di spedizione per questo NUM_DOC
+        sum_shipping_costs = shipping_costs_sum.get(num_doc, 0)
+        
+        # Calcola l'importo dell'IVA sulla somma dei costi di spedizione
+        vat_amount = sum_shipping_costs * iva_nazione / 100
+        
+        # Assegna l'importo dell'IVA alla colonna 'PREZZO_1' della riga dell'IVA
+        vat_rows.at[index, ' PREZZO_1'] = vat_amount
 
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
