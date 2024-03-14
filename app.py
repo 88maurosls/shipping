@@ -72,7 +72,7 @@ if uploaded_file is not None:
     # Calcola il valore della riga VAT
     for index, shipping_row in adjusted_rows.iterrows():
         num_doc = shipping_row[' NUM_DOC']
-        same_doc_rows = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].str.endswith("-2"))]
+        same_doc_rows = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].astype(str).str.endswith("-2"))]
         total_shipping_cost = same_doc_rows[' PREZZO_1'].sum()
         if num_doc in countrycode_dict:
             iva = countrycode_dict[num_doc]
