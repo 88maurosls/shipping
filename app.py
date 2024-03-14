@@ -49,20 +49,21 @@ if uploaded_file is not None:
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
     # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
-    vat_rows = unique_costs_rows.copy()
-    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
-    for index, row in vat_rows.iterrows():
-        num_doc = row[' NUM_DOC']
-        iva_nazione = countrycode_dict[row[' NAZIONE']]
-        
-        # Calcola la somma dei 'PREZZO_1' delle righe Shipping Costs con lo stesso 'NUM_DOC'
-        sum_shipping_costs = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].astype(str).str.contains('-2'))][' PREZZO_1'].sum()
-        
-        # Calcola l'importo dell'IVA sulla somma dei costi di spedizione
-        vat_amount = sum_shipping_costs * iva_nazione / 100
-        
-        # Assegna l'importo dell'IVA alla colonna 'PREZZO_1' della riga dell'IVA
-        vat_rows.at[index, ' PREZZO_1'] = vat_amount
+vat_rows = unique_costs_rows.copy()
+vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
+for index, row in vat_rows.iterrows():
+    num_doc = row[' NUM_DOC']
+    iva_nazione = countrycode_dict[row[' NAZIONE']]
+    
+    # Calcola la somma dei 'PREZZO_1' delle righe Shipping Costs con lo stesso 'NUM_DOC'
+    sum_shipping_costs = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].astype(str).str.contains('-2'))][' PREZZO_1'].sum()
+    
+    # Calcola l'importo dell'IVA sulla somma dei costi di spedizione
+    vat_amount = sum_shipping_costs * iva_nazione / 100
+    
+    # Assegna l'importo dell'IVA alla colonna 'PREZZO_1' della riga dell'IVA
+    vat_rows.at[index, ' PREZZO_1'] = vat_amount
+
 
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
