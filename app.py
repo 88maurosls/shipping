@@ -27,50 +27,44 @@ if uploaded_file is not None:
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
 
     # Apporta le modifiche necessarie per le righe degli Shipping Costs
-    adjusted_rows = unique_costs_rows.copy()
-    for index, row in adjusted_rows.iterrows():
-        nazione = row[' NAZIONE']
-        if nazione in countrycode_dict:
-            iva = countrycode_dict[nazione]
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            adjusted_rows.at[index, ' PREZZO_1'] = costo_senza_iva
-
-    adjusted_rows[' COD_ART'] = "SHIPPING"
-    adjusted_rows[' COD_ART_DOC'] = "SHIPPING"
-    adjusted_rows[' DESCR_ART'] = "Shipping Costs"
-    adjusted_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
-    adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
-    adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
-    adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-
-    # Preparare le righe dell'IVA
+    # e prepara le righe IVA se la NAZIONE è nel dizionario
     vat_rows = pd.DataFrame()
     for index, row in unique_costs_rows.iterrows():
         nazione = row[' NAZIONE']
+        costo_spedizione = row[' COSTI_SPEDIZIONE']
         if nazione in countrycode_dict:
-            # Il calcolo dell'IVA avviene solo per i paesi nel countrycode.txt
             iva = countrycode_dict[nazione]
-            # Calcolare il totale prezzo prodotti + costo spedizione per ogni NUM_DOC
+            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
+            # Aggiorna il costo spedizione escludendo l'IVA
+            unique_costs_rows.at[index, ' PREZZO_1'] = costo_senza_iva
+            
+            # Calcola l'IVA sulla somma di costo dell'articolo e costo spedizione
             total_price = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
             total_price += costo_spedizione
             costo_iva = (total_price * iva) / 100
+            
+            # Crea la nuova riga VAT
+            vat_row = row.copy()
+            vat_row[' PREZZO_1'] = costo_iva
+            vat_row[' COD_ART'] = "VAT"
+            vat_row[' COD_ART_DOC'] = "VAT"
+            vat_row[' DESCR_ART'] = "VAT"
+            vat_row[' DESCR_ART_ESTESA'] = "VAT"
+            vat_row[' DESCRIZIONE_RIGA'] = "VAT"
+            vat_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-3"
+            vat_row[' HSCODE'] = ""
+            vat_rows = vat_rows.append(vat_row, ignore_index=True)
 
-            # Crea una nuova riga per l'IVA
-            new_row = row.copy()
-            new_row[' PREZZO_1'] = costo_iva
-            new_row[' COD_ART'] = "VAT"
-            new_row[' COD_ART_DOC'] = "VAT"
-            new_row[' DESCR_ART'] = "VAT"
-            new_row[' DESCR_ART_ESTESA'] = "VAT"
-            new_row[' DESCRIZIONE_RIGA'] = "VAT"
-            new_row[' PROGRESSIVO_RIGA'] = row[' PROGRESSIVO_RIGA'].astype(str) + "-3"
-            new_row[' HSCODE'] = ""
-            vat_rows = vat_rows.append(new_row, ignore_index=True)
+    unique_costs_rows[' COD_ART'] = unique_costs_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
+    unique_costs_rows[' COD_ART_DOC'] = unique_costs_rows[' COD_ART']
+    unique_costs_rows[' DESCR_ART'] = "Shipping Costs"
+    unique_costs_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
+    unique_costs_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
+    unique_costs_rows[' PROGRESSIVO_RIGA'] = unique_costs_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
+    unique_costs_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-    # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
-    final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
+    # Aggiungi le righe degli Shipping Costs e le righe dell'IVA (se applicabile) al dataframe originale
+    final_df = pd.concat([df, unique_costs_rows, vat_rows], ignore_index=True)
 
     # Ordina il dataframe finale per NUM_DOC e PROGRESSIVO_RIGA
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
