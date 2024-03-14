@@ -1,5 +1,3 @@
-#aggiunta riga VAT per ordini europei
-
 import streamlit as st
 import pandas as pd
 import io
@@ -34,10 +32,10 @@ if uploaded_file is not None:
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
-            adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
+            costo_spedizione = row[' COSTI_SPEDIZIONE'] / (1 + iva / 100)
+            somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
+            costo_iva = somma_prezzo_iva + costo_spedizione * iva / 100
+            adjusted_rows.at[index, ' PREZZO_1'] = costo_spedizione
         else:
             # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
@@ -54,20 +52,11 @@ if uploaded_file is not None:
     vat_rows = unique_costs_rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
-        nazione = row[' NAZIONE']
-        if nazione in countrycode_dict:
-            iva = countrycode_dict[nazione]
-            # Calcola il totale basato sullo stesso NUM_DOC
-            num_doc = row[' NUM_DOC']
-            prezzo_originale = df[df[' NUM_DOC'] == num_doc][' PREZZO_1'].sum()
-            # Trova il costo di spedizione dalla riga degli Shipping Costs
-            costo_spedizione = adjusted_rows[adjusted_rows[' NUM_DOC'] == num_doc][' PREZZO_1'].iloc[0]
-            # Calcola l'IVA
-            vat_amount = prezzo_originale * iva / 100
-            formatted_vat = int(vat_amount) if vat_amount == int(vat_amount) else vat_amount
-            vat_rows.at[index, ' PREZZO_1'] = formatted_vat
-        else:
-            st.error("La nazione non è presente nel dizionario. Assicurati che sia stata correttamente definita.")
+        iva = countrycode_dict[row[' NAZIONE']]
+        costo_spedizione = row[' COSTI_SPEDIZIONE'] / (1 + iva / 100)
+        somma_prezzo_iva = df[df[' NUM_DOC'] == row[' NUM_DOC']][' PREZZO_1'].sum()
+        costo_iva = somma_prezzo_iva + costo_spedizione * iva / 100
+        vat_rows.at[index, ' PREZZO_1'] = costo_iva
 
     vat_rows[' COD_ART'] = "VAT"
     if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
