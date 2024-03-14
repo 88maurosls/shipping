@@ -48,26 +48,24 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-    # Crea una seconda riga aggiuntiva per l'IVA
-    vat_rows = unique_costs_rows.copy()
-    for index, row in vat_rows.iterrows():
+    # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni nel countrycode.txt
+    vat_rows = pd.DataFrame(columns=df.columns)  # Crea un DataFrame vuoto con le stesse colonne di df
+    for index, row in unique_costs_rows.iterrows():
         if row[' NAZIONE'] in countrycode_dict:
+            new_row = row.copy()
             iva = countrycode_dict[row[' NAZIONE']]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
             costo_iva = costo_spedizione * iva / 100
             formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-            vat_rows.at[index, ' PREZZO_1'] = formatted_vat
-        else:
-            # Se la nazione non è nel dizionario, imposta a 0 l'IVA
-            vat_rows.at[index, ' PREZZO_1'] = 0
-
-    vat_rows[' COD_ART'] = "VAT"
-    vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
-    vat_rows[' DESCR_ART'] = "VAT"
-    vat_rows[' DESCR_ART_ESTESA'] = "VAT"
-    vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
-    vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
-    vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+            new_row[' COD_ART'] = "VAT"
+            new_row[' COD_ART_DOC'] = "VAT"
+            new_row[' DESCR_ART'] = "VAT"
+            new_row[' DESCR_ART_ESTESA'] = "VAT"
+            new_row[' DESCRIZIONE_RIGA'] = "VAT"
+            new_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-3"
+            new_row[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+            new_row[' PREZZO_1'] = formatted_vat
+            vat_rows = vat_rows.append(new_row)
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
