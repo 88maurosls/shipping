@@ -27,7 +27,7 @@ if uploaded_file is not None:
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
 
     # Calcola la somma dei 'PREZZO_1' delle righe Shipping Costs per ogni NUM_DOC
-    shipping_costs_sum = df[df[' PROGRESSIVO_RIGA'].str.contains('-2')].groupby(' NUM_DOC')[' PREZZO_1'].sum()
+    shipping_costs_sum = df[df[' PROGRESSIVO_RIGA'].astype(str).str.contains('-2')].groupby(' NUM_DOC')[' PREZZO_1'].sum()
 
     # Apporta le modifiche necessarie per le righe degli Shipping Costs
     adjusted_rows = unique_costs_rows.copy()
