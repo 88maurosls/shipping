@@ -50,13 +50,14 @@ if uploaded_file is not None:
 
     # Crea una riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
     vat_rows = pd.DataFrame(columns=df.columns)
-    for index, row in unique_costs_rows.iterrows():
-        if row[' NAZIONE'] in countrycode_dict:
-            num_doc = row[' NUM_DOC']
-            iva_nazione = countrycode_dict[row[' NAZIONE']]
-            # Calcola l'importo totale dell'IVA per il NUM_DOC
-            total_vat = costs_rows[(costs_rows[' NUM_DOC'] == num_doc) & (costs_rows[' NAZIONE'] == row[' NAZIONE'])][' COSTI_SPEDIZIONE'].sum() * iva_nazione / 100
-            vat_rows = vat_rows.append({' DESCR_ART_ESTESA': 'VAT', ' NUM_DOC': num_doc, ' PROGRESSIVO_RIGA': f'{num_doc}-3', ' PREZZO_1': total_vat}, ignore_index=True)
+    if not unique_costs_rows.empty:
+        for index, row in unique_costs_rows.iterrows():
+            if row[' NAZIONE'] in countrycode_dict:
+                num_doc = row[' NUM_DOC']
+                iva_nazione = countrycode_dict[row[' NAZIONE']]
+                # Calcola l'importo totale dell'IVA per il NUM_DOC
+                total_vat = costs_rows[(costs_rows[' NUM_DOC'] == num_doc) & (costs_rows[' NAZIONE'] == row[' NAZIONE'])][' COSTI_SPEDIZIONE'].sum() * iva_nazione / 100
+                vat_rows = vat_rows.append({' DESCR_ART_ESTESA': 'VAT', ' NUM_DOC': num_doc, ' PROGRESSIVO_RIGA': f'{num_doc}-3', ' PREZZO_1': total_vat}, ignore_index=True)
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
