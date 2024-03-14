@@ -54,19 +54,20 @@ if uploaded_file is not None:
     vat_rows = unique_costs_rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
-        iva = countrycode_dict[row[' NAZIONE']]
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        num_doc = row[' NUM_DOC']
-        progressivo_riga = row[' PROGRESSIVO_RIGA']
-        
-        # Trova il prezzo dell'articolo corrispondente al NUM_DOC e al PROGRESSIVO_RIGA
-        prezzo_articolo_query = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'] == progressivo_riga)][' PREZZO_ARTICOLO']
-        if not prezzo_articolo_query.empty:
-            prezzo_articolo = prezzo_articolo_query.values[0]
-            costo_senza_iva = costo_spedizione + prezzo_articolo  # Calcolo del costo senza IVA
-            costo_iva = costo_senza_iva * iva / 100
-            formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-            vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+    iva = countrycode_dict[row[' NAZIONE']]
+    costo_spedizione = row[' COSTI_SPEDIZIONE']
+    num_doc = row[' NUM_DOC']
+    progressivo_riga = row[' PROGRESSIVO_RIGA']
+    
+    # Trova il prezzo dell'articolo corrispondente al NUM_DOC e al PROGRESSIVO_RIGA
+    prezzo_articolo = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'] == progressivo_riga)][' PREZZO_1']
+    if not prezzo_articolo.empty:
+        prezzo_articolo = prezzo_articolo.values[0]
+        costo_senza_iva = costo_spedizione + prezzo_articolo  # Calcolo del costo senza IVA
+        costo_iva = costo_senza_iva * iva / 100
+        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+
 
     vat_rows[' COD_ART'] = "VAT"
     if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
