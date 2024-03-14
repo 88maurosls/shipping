@@ -56,8 +56,14 @@ if uploaded_file is not None:
         nazione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' NAZIONE'].iloc[0]
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
-            total_price = total_product_price[num_doc]
-            costo_spedizione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' COSTI_SPEDIZIONE'].iloc[0]
+            
+            # Assicurarsi che total_price sia un numero
+            total_price = float(total_product_price[num_doc].replace(',', '.')) if isinstance(total_product_price[num_doc], str) else total_product_price[num_doc]
+            
+            # Assicurarsi che costo_spedizione sia un numero
+            costo_spedizione_str = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' COSTI_SPEDIZIONE'].iloc[0]
+            costo_spedizione = float(costo_spedizione_str.replace(',', '.')) if isinstance(costo_spedizione_str, str) else costo_spedizione_str
+            
             total_price += costo_spedizione
             costo_iva = total_price * iva / 100
             formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
