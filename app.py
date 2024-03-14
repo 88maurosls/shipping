@@ -49,7 +49,7 @@ if uploaded_file is not None:
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
     # Creare un DataFrame vuoto per le righe VAT
-    vat_rows = pd.DataFrame()
+    vat_rows = pd.DataFrame(columns=df.columns)
 
     # Creare un dizionario per tenere traccia dei totali delle spese di spedizione per ogni combinazione di NUM_DOC e PROGRESSIVO_RIGA
     total_shipping_costs = {}
