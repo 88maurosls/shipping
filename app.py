@@ -52,17 +52,20 @@ if uploaded_file is not None:
     vat_rows = unique_costs_rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
-        iva = countrycode_dict[row[' NAZIONE']]
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        costo_iva = costo_spedizione * iva / 100
-        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+        num_doc = row[' NUM_DOC']
+        iva_nazione = countrycode_dict[row[' NAZIONE']]
+        
+        # Calcola la somma dei 'PREZZO_1' delle righe Shipping Costs con lo stesso 'NUM_DOC'
+        sum_shipping_costs = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].str.contains('-2'))][' PREZZO_1'].sum()
+        
+        # Calcola l'importo dell'IVA sulla somma dei costi di spedizione
+        vat_amount = sum_shipping_costs * iva_nazione / 100
+        
+        # Assegna l'importo dell'IVA alla colonna 'PREZZO_1' della riga dell'IVA
+        vat_rows.at[index, ' PREZZO_1'] = vat_amount
 
     vat_rows[' COD_ART'] = "VAT"
-    if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
-        vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
-    else:
-        st.error("La colonna 'COD_ART' non è presente nel DataFrame 'vat_rows'. Assicurati che sia stata correttamente definita.")
+    vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
     vat_rows[' DESCR_ART'] = "VAT"
     vat_rows[' DESCR_ART_ESTESA'] = "VAT"
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
