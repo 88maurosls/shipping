@@ -34,6 +34,18 @@ if uploaded_file is not None:
 
     # Identify rows with non-zero COSTI_SPEDIZIONE
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
+    unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
+
+    # Loop through unique_costs_rows
+for index, row in unique_costs_rows.iterrows():
+    nazione = row[' NAZIONE']
+    add_vat_row = nazione in countrycode_dict
+
+    if add_vat_row:
+        # ... (Your code to calculate and update adjusted_rows)
+    else:
+        # Skip processing for this iteration if nation is not in dictionary
+        continue  # Move the 'continue' statement inside the loop
 
     # Filter unique rows based on NUM_DOC
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
