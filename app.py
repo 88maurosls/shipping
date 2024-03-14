@@ -3,7 +3,7 @@ import pandas as pd
 import io
 
 # Titolo dell'applicazione Streamlit
-st.title('Modifica File CSV per Costi di Spedizione')
+st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
 # Caricamento del file tramite drag-and-drop
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
@@ -26,7 +26,7 @@ if uploaded_file is not None:
     # Filtra le righe uniche basate su NUM_DOC
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
 
-    # Apporta le modifiche necessarie
+    # Apporta le modifiche necessarie per le righe degli Shipping Costs
     adjusted_rows = unique_costs_rows.copy()
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
@@ -48,8 +48,29 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-    # Aggiungi le righe modificate al dataframe originale
-    final_df = pd.concat([df, adjusted_rows], ignore_index=True)
+    # Crea una seconda riga aggiuntiva per l'IVA
+    vat_rows = unique_costs_rows.copy()
+    for index, row in vat_rows.iterrows():
+        if row[' NAZIONE'] in countrycode_dict:
+            iva = countrycode_dict[row[' NAZIONE']]
+            costo_spedizione = row[' COSTI_SPEDIZIONE']
+            costo_iva = costo_spedizione * iva / 100
+            formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+            vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+        else:
+            # Se la nazione non è nel dizionario, imposta a 0 l'IVA
+            vat_rows.at[index, ' PREZZO_1'] = 0
+
+    vat_rows[' COD_ART'] = "VAT"
+    vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
+    vat_rows[' DESCR_ART'] = "VAT"
+    vat_rows[' DESCR_ART_ESTESA'] = "VAT"
+    vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
+    vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
+    vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+
+    # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
+    final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
 
     # Ordina il dataframe finale per NUM_DOC
     final_df.sort_values(by=[' NUM_DOC'], inplace=True)
