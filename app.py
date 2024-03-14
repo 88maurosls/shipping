@@ -9,7 +9,7 @@ st.title('Modifica File CSV per Costi di Spedizione e IVA')
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
-    # Lettura del file caricato convertendo le virgole in punti nei numeri
+    # Lettura del file caricato
     df = pd.read_csv(uploaded_file, delimiter=';', decimal=',')
 
     # Leggi il file countrycode.txt e crea un dizionario
@@ -20,56 +20,42 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Identifica le righe con COSTI_SPEDIZIONE diversi da 0 e filtra le righe uniche basate su NUM_DOC
-    costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0].drop_duplicates(subset=[' NUM_DOC'])
+    # Aggiungi le righe degli Shipping Costs
+    shipping_rows = df[df[' COSTI_SPEDIZIONE'] != 0].copy()
+    shipping_rows[' PREZZO_1'] = shipping_rows.apply(
+        lambda x: x[' COSTI_SPEDIZIONE'] / (1 + countrycode_dict.get(x[' NAZIONE'], 0) / 100) if x[' NAZIONE'] in countrycode_dict else x[' COSTI_SPEDIZIONE'],
+        axis=1
+    )
+    shipping_rows[' COD_ART'] = shipping_rows.index.map(lambda x: f"SHIPPINGCOSTS{x}")
+    shipping_rows[' DESCR_ART'] = "Shipping Costs"
+    shipping_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
+    shipping_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
+    shipping_rows[' PROGRESSIVO_RIGA'] = shipping_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
+    shipping_rows[' HSCODE'] = ""
 
-    # Initialize adjusted_rows and vat_rows as empty DataFrames with the same columns as df
-    adjusted_rows = pd.DataFrame(columns=df.columns)
-    vat_rows = pd.DataFrame(columns=df.columns)
+    # Aggiungi le righe dell'IVA
+    vat_rows = df[df[' NAZIONE'].isin(countrycode_dict)].copy()
+    vat_rows[' PREZZO_1'] = vat_rows.apply(
+        lambda x: x[' PREZZO_1'] * (countrycode_dict.get(x[' NAZIONE'], 0) / 100),
+        axis=1
+    )
+    vat_rows[' COD_ART'] = "VAT"
+    vat_rows[' DESCR_ART'] = "VAT"
+    vat_rows[' DESCR_ART_ESTESA'] = "VAT"
+    vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
+    vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
+    vat_rows[' HSCODE'] = ""
 
-    # Process unique_costs_rows for Shipping and VAT rows
-    for index, row in costs_rows.iterrows():
-        nazione = row[' NAZIONE']
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        if nazione in countrycode_dict:
-            # Calculate VAT and Shipping Costs
-            iva = countrycode_dict[nazione]
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            costo_iva = (costo_spedizione * iva / 100)
-            # Append Shipping Costs row
-            ship_row = row.copy()
-            ship_row[' PREZZO_1'] = costo_senza_iva
-            ship_row[' COD_ART'] = "SHIPPINGCOSTS"
-            ship_row[' COD_ART_DOC'] = "SHIPPINGCOSTS"
-            ship_row[' DESCR_ART'] = "Shipping Costs"
-            ship_row[' DESCR_ART_ESTESA'] = "Shipping Costs"
-            ship_row[' DESCRIZIONE_RIGA'] = "Shipping Costs"
-            ship_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-2"
-            ship_row[' HSCODE'] = ""
-            adjusted_rows = adjusted_rows.append(ship_row, ignore_index=True)
-            
-            # Append VAT row
-            vat_row = row.copy()
-            vat_row[' PREZZO_1'] = costo_iva
-            vat_row[' COD_ART'] = "VAT"
-            vat_row[' COD_ART_DOC'] = "VAT"
-            vat_row[' DESCR_ART'] = "VAT"
-            vat_row[' DESCR_ART_ESTESA'] = "VAT"
-            vat_row[' DESCRIZIONE_RIGA'] = "VAT"
-            vat_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-3"
-            vat_row[' HSCODE'] = ""
-            vat_rows = vat_rows.append(vat_row, ignore_index=True)
-    
-    # Combine all DataFrames
-    final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
+    # Unisci i dataframe delle righe degli Shipping Costs, del VAT e il dataframe originale
+    final_df = pd.concat([df, shipping_rows, vat_rows], ignore_index=True)
 
-    # Sort the final dataframe by NUM_DOC and PROGRESSIVO_RIGA
-    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
+    # Ordina il dataframe finale per NUM_DOC
+    final_df.sort_values(by=[' NUM_DOC'], inplace=True)
 
-    # Convert the final dataframe to CSV, maintaining the original number format
+    # Converti il dataframe finale in CSV mantenendo il formato originale per i numeri
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f', decimal=',')
 
-    # Button to download the modified file
+    # Bottone per il download del file modificato
     st.download_button(
         label="Scarica il CSV modificato",
         data=io.BytesIO(csv.encode('utf-8')),
