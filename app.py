@@ -48,20 +48,16 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-    # Calcola correttamente il valore 'RIGA_1' per le righe dell'IVA
+    # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
     vat_rows = unique_costs_rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
-        iva = countrycode_dict[row[' NAZIONE']]
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        num_doc = row[' NUM_DOC']
-        progressivo_riga = row[' PROGRESSIVO_RIGA']
-        
-        # Trova il prezzo dell'articolo corrispondente al NUM_DOC e al PROGRESSIVO_RIGA
-        prezzo_articolo = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'] == progressivo_riga)][' PREZZO_1']
-        if not prezzo_articolo.empty:
-            prezzo_articolo = prezzo_articolo.iloc[0]  # Prendi il valore dalla prima riga e dalla prima colonna
-            costo_senza_iva = costo_spedizione + prezzo_articolo  # Calcolo del costo senza IVA
+        nazione = row[' NAZIONE']
+        if nazione in countrycode_dict:
+            iva = countrycode_dict[nazione]
+            costo_spedizione = row[' COSTI_SPEDIZIONE']
+            prezzo_articolo = df[(df[' NUM_DOC'] == row[' NUM_DOC']) & (df[' PROGRESSIVO_RIGA'] == row[' PROGRESSIVO_RIGA'])][' PREZZO_ARTICOLO'].values[0]
+            costo_senza_iva = prezzo_articolo + costo_spedizione
             costo_iva = costo_senza_iva * iva / 100
             formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
             vat_rows.at[index, ' PREZZO_1'] = formatted_vat
