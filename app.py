@@ -9,12 +9,12 @@ st.title('Modifica File CSV per Costi di Spedizione e IVA')
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
-    # Lettura del file caricato
-    df = pd.read_csv(uploaded_file, delimiter=';')
+    # Lettura del file caricato convertendo le virgole in punti nei numeri
+    df = pd.read_csv(uploaded_file, delimiter=';', decimal=',')
 
     # Leggi il file countrycode.txt e crea un dizionario
     try:
-        countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None)
+        countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None, decimal=',')
         countrycode_dict = dict(zip(countrycode_df[0], countrycode_df[2]))
     except Exception as e:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
@@ -34,8 +34,7 @@ if uploaded_file is not None:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
             costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
-            adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
+            adjusted_rows.at[index, ' PREZZO_1'] = costo_senza_iva
         else:
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
@@ -50,27 +49,17 @@ if uploaded_file is not None:
     # Calcolare il totale dei prezzi dei prodotti per ogni NUM_DOC
     total_product_price = df.groupby(' NUM_DOC')[' PREZZO_1'].sum()
 
-    # Crea una seconda riga aggiuntiva per l'IVA
+    # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
     vat_rows = unique_costs_rows.copy()
     for num_doc in unique_costs_rows[' NUM_DOC'].unique():
         nazione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' NAZIONE'].iloc[0]
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
-
-            # Assicurarsi che total_price e costo_spedizione siano numeri
             total_price = total_product_price[num_doc]
-            if isinstance(total_price, str):
-                total_price = float(total_price.replace(',', '.'))
-                
-            costo_spedizione_str = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' COSTI_SPEDIZIONE'].iloc[0]
-            costo_spedizione = costo_spedizione_str
-            if isinstance(costo_spedizione_str, str):
-                costo_spedizione = float(costo_spedizione_str.replace(',', '.'))
-
+            costo_spedizione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' COSTI_SPEDIZIONE'].iloc[0]
             total_price += costo_spedizione
             costo_iva = total_price * iva / 100
-            formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-            vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = formatted_vat
+            vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = costo_iva
 
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
@@ -87,7 +76,7 @@ if uploaded_file is not None:
     final_df.sort_values(by=[' NUM_DOC'], inplace=True)
 
     # Converti il dataframe finale in CSV mantenendo il formato originale per i numeri
-    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f')
+    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f', decimal=',')
 
     # Bottone per il download del file modificato
     st.download_button(
