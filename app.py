@@ -46,20 +46,20 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-    # Calcolare il totale dei prezzi dei prodotti per ogni NUM_DOC
-    total_product_price = df.groupby(' NUM_DOC')[' PREZZO_1'].sum()
+    # Calcolare il totale dei prezzi dei prodotti per ogni NUM_DOC senza duplicati in PROGRESSIVO_RIGA
+    total_product_price = df.drop_duplicates(subset=[' NUM_DOC', ' PROGRESSIVO_RIGA']).groupby(' NUM_DOC')[' PREZZO_1'].sum()
 
     # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
     vat_rows = unique_costs_rows.copy()
     for num_doc in unique_costs_rows[' NUM_DOC'].unique():
-        nazione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' NAZIONE'].iloc[0]
-        if nazione in countrycode_dict:
-            iva = countrycode_dict[nazione]
-            total_price = total_product_price[num_doc]
-            costo_spedizione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' COSTI_SPEDIZIONE'].iloc[0]
-            total_price += costo_spedizione
-            costo_iva = total_price * iva / 100
-            vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = costo_iva
+    nazione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' NAZIONE'].iloc[0]
+    if nazione in countrycode_dict:
+        iva = countrycode_dict[nazione]
+        total_price = total_product_price[num_doc]
+        costo_spedizione = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' COSTI_SPEDIZIONE'].iloc[0]
+        total_price += costo_spedizione
+        costo_iva = total_price * iva / 100
+        vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = costo_iva
 
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
