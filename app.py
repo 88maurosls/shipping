@@ -57,9 +57,11 @@ if uploaded_file is not None:
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
-            # Calcola il totale da cui estrarre l'IVA
-            prezzo_originale = row[' PREZZO_1']  # Prezzo originale della riga
-            costo_spedizione = row[' COSTI_SPEDIZIONE']  # Costi di spedizione
+            # Calcola il totale basato sullo stesso NUM_DOC
+            num_doc = row[' NUM_DOC']
+            prezzo_originale = df[df[' NUM_DOC'] == num_doc][' PREZZO_1'].sum()
+            # Trova il costo di spedizione dalla riga degli Shipping Costs
+            costo_spedizione = adjusted_rows[adjusted_rows[' NUM_DOC'] == num_doc][' PREZZO_1'].iloc[0]
             totale_con_spedizione = prezzo_originale + costo_spedizione  # Totale comprensivo di spedizione
             # Calcola l'IVA
             vat_amount = totale_con_spedizione * iva / 100
