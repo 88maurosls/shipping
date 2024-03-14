@@ -57,7 +57,6 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-
 # Crea una seconda riga aggiuntiva per l'IVA solo se la nazione è nel dizionario
 vat_rows = unique_costs_rows[unique_costs_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 for index, row in vat_rows.iterrows():
