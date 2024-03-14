@@ -49,23 +49,24 @@ if uploaded_file is not None:
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
     # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni nel countrycode.txt
-    vat_rows = pd.DataFrame(columns=df.columns)  # Crea un DataFrame vuoto con le stesse colonne di df
-    for index, row in unique_costs_rows.iterrows():
-        if row[' NAZIONE'] in countrycode_dict:
-            iva = countrycode_dict[row[' NAZIONE']]
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
-            costo_iva = costo_spedizione * iva / 100
-            formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-            new_row = row.copy()
-            new_row[' COD_ART'] = "VAT"
-            new_row[' COD_ART_DOC'] = "VAT"
-            new_row[' DESCR_ART'] = "VAT"
-            new_row[' DESCR_ART_ESTESA'] = "VAT"
-            new_row[' DESCRIZIONE_RIGA'] = "VAT"
-            new_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-3"
-            new_row[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-            new_row[' PREZZO_1'] = formatted_vat
-            vat_rows = vat_rows.append(new_row, ignore_index=True)
+vat_rows = pd.DataFrame(columns=df.columns)  # Crea un DataFrame vuoto con le stesse colonne di df
+for index, row in unique_costs_rows.iterrows():
+    if row[' NAZIONE'] in countrycode_dict:
+        iva = countrycode_dict[row[' NAZIONE']]
+        costo_spedizione = row[' COSTI_SPEDIZIONE']
+        costo_iva = costo_spedizione * iva / 100
+        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+        new_row = row.copy()
+        new_row[' COD_ART'] = "VAT"
+        new_row[' COD_ART_DOC'] = "VAT"
+        new_row[' DESCR_ART'] = "VAT"
+        new_row[' DESCR_ART_ESTESA'] = "VAT"
+        new_row[' DESCRIZIONE_RIGA'] = "VAT"
+        new_row[' PROGRESSIVO_RIGA'] = str(row[' PROGRESSIVO_RIGA']) + "-3"
+        new_row[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+        new_row[' PREZZO_1'] = formatted_vat
+        vat_rows = vat_rows.append(new_row, ignore_index=True)
+
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
