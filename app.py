@@ -20,27 +20,16 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Identifica le righe con COSTI_SPEDIZIONE diversi da 0
-    costs_rows = df[df['COSTI_SPEDIZIONE'] != 0]
-
     # Filtra le righe uniche basate su NUM_DOC
-    unique_costs_rows = costs_rows.drop_duplicates(subset=['NUM_DOC'])
+    unique_df = df.drop_duplicates(subset=['NUM_DOC', 'PROGRESSIVO_RIGA'])
 
     # Apporta le modifiche necessarie per le righe degli Shipping Costs
-    adjusted_rows = unique_costs_rows.copy()
+    adjusted_rows = unique_df.copy()
     for index, row in adjusted_rows.iterrows():
-        nazione = row['NAZIONE']
-        if nazione in countrycode_dict:
-            iva = countrycode_dict[nazione]
-            costo_spedizione = row['COSTI_SPEDIZIONE']
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
-            adjusted_rows.at[index, 'PREZZO_1'] = formatted_price
-        else:
-            # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
-            adjusted_rows.at[index, 'PREZZO_1'] = row['COSTI_SPEDIZIONE']
+        prezzo_articolo = row['PREZZO_1']
+        adjusted_rows.at[index, 'PREZZO_1'] = prezzo_articolo
 
-    adjusted_rows['COD_ART'] = adjusted_rows['COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
+    adjusted_rows['COD_ART'] = adjusted_rows['PREZZO_1'].apply(lambda x: f"SHIPPINGCOSTS{x}")
     adjusted_rows['COD_ART_DOC'] = adjusted_rows['COD_ART']
     adjusted_rows['DESCR_ART'] = "Shipping Costs"
     adjusted_rows['DESCR_ART_ESTESA'] = "Shipping Costs"
@@ -49,16 +38,15 @@ if uploaded_file is not None:
     adjusted_rows['HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
     # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
-    vat_rows = unique_costs_rows.copy()
+    vat_rows = unique_df.copy()
     vat_rows = vat_rows[vat_rows['NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
     for index, row in vat_rows.iterrows():
         nazione = row['NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
-            costo_spedizione = row['COSTI_SPEDIZIONE']
-            prezzo_articolo = df[(df['NUM_DOC'] == row['NUM_DOC']) & (df['PROGRESSIVO_RIGA'] == row['PROGRESSIVO_RIGA'])]['PREZZO_1'].values[0]
-            costo_senza_iva = prezzo_articolo + costo_spedizione
-            costo_iva = costo_senza_iva * iva / 100
+            prezzo_articolo = row['PREZZO_1']
+            costo_spedizione = prezzo_articolo
+            costo_iva = costo_spedizione * iva / 100
             formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
             vat_rows.at[index, 'RIGA_1'] = formatted_vat
 
