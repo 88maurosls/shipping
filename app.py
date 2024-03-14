@@ -56,7 +56,7 @@ if uploaded_file is not None:
         iva_nazione = countrycode_dict[row[' NAZIONE']]
         
         # Calcola la somma dei 'PREZZO_1' delle righe Shipping Costs con lo stesso 'NUM_DOC'
-        sum_shipping_costs = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].str.contains('-2'))][' PREZZO_1'].sum()
+        sum_shipping_costs = df[(df[' NUM_DOC'] == num_doc) & (df[' PROGRESSIVO_RIGA'].astype(str).str.contains('-2'))][' PREZZO_1'].sum()
         
         # Calcola l'importo dell'IVA sulla somma dei costi di spedizione
         vat_amount = sum_shipping_costs * iva_nazione / 100
