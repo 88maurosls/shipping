@@ -28,6 +28,8 @@ if uploaded_file is not None:
 
     # Apporta le modifiche necessarie
 adjusted_rows = unique_costs_rows.copy()
+# Apporta le modifiche necessarie
+adjusted_rows = unique_costs_rows.copy()
 for index, row in adjusted_rows.iterrows():
     nazione = row[' NAZIONE']
     if nazione in countrycode_dict:
@@ -38,6 +40,7 @@ for index, row in adjusted_rows.iterrows():
         adjusted_rows.at[index, ' PREZZO_1'] = costo_senza_iva_arrotondato
     else:
         adjusted_rows.at[index, ' PREZZO_1'] = int(round(row[' COSTI_SPEDIZIONE'], 0))  # Arrotonda e converte in intero
+
 
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
