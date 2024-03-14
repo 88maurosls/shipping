@@ -48,21 +48,24 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
+    # Calcolare il totale dei prezzi dei prodotti per ogni NUM_DOC
+    total_product_price = df.groupby(' NUM_DOC')[' PREZZO_1'].sum()
+
     # Crea una seconda riga aggiuntiva per l'IVA solo per le nazioni presenti in countrycode.txt
     vat_rows = unique_costs_rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
-    for index, row in vat_rows.iterrows():
-        iva = countrycode_dict[row[' NAZIONE']]
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        costo_iva = costo_spedizione * iva / 100
-        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
-        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+
+    # Calcolare l'IVA per ogni NUM_DOC
+    for num_doc in total_product_price.index:
+        if num_doc in unique_costs_rows[' NUM_DOC'].values:
+            total_price = total_product_price[num_doc] + unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' COSTI_SPEDIZIONE'].iloc[0]
+            country = unique_costs_rows[unique_costs_rows[' NUM_DOC'] == num_doc][' NAZIONE'].iloc[0]
+            iva_percentage = countrycode_dict.get(country, 0)
+            iva_amount = total_price * iva_percentage / 100
+            vat_rows.loc[vat_rows[' NUM_DOC'] == num_doc, ' PREZZO_1'] = iva_amount
 
     vat_rows[' COD_ART'] = "VAT"
-    if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
-        vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
-    else:
-        st.error("La colonna 'COD_ART' non è presente nel DataFrame 'vat_rows'. Assicurati che sia stata correttamente definita.")
+    vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
     vat_rows[' DESCR_ART'] = "VAT"
     vat_rows[' DESCR_ART_ESTESA'] = "VAT"
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
@@ -85,4 +88,5 @@ if uploaded_file is not None:
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
     )
+
     st.balloons()
