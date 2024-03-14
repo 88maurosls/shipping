@@ -57,18 +57,15 @@ if uploaded_file is not None:
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-# Crea una seconda riga aggiuntiva per l'IVA
-vat_rows = unique_costs_rows.copy()
+
+# Crea una seconda riga aggiuntiva per l'IVA solo se la nazione è nel dizionario
+vat_rows = unique_costs_rows[unique_costs_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 for index, row in vat_rows.iterrows():
-    if add_vat_row:
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        iva = countrycode_dict[row[' NAZIONE']]
-        iva_amount = calculate_vat(costo_spedizione, iva)
-        formatted_vat = int(iva_amount) if iva_amount == int(iva_amount) else iva_amount
-        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
-    else:
-        # Se la nazione non è nel dizionario, imposta a 0 l'IVA
-        vat_rows.at[index, ' PREZZO_1'] = 0
+    costo_spedizione = row[' COSTI_SPEDIZIONE']
+    iva = countrycode_dict[row[' NAZIONE']]
+    iva_amount = calculate_vat(costo_spedizione, iva)
+    formatted_vat = int(iva_amount) if iva_amount == int(iva_amount) else iva_amount
+    vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
 vat_rows[' COD_ART'] = "VAT"
 vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
