@@ -57,7 +57,7 @@ if uploaded_file is not None:
 
     # Calcolare l'IVA per ogni NUM_DOC
     for num_doc in unique_costs_rows[' NUM_DOC'].unique():
-    total_price = total_product_price[num_doc]
+    total_price = total_product_price[' NUM_DOC']
     shipping_cost = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' COSTI_SPEDIZIONE'].iloc[0]
     total_price += shipping_cost
     country = unique_costs_rows.loc[unique_costs_rows[' NUM_DOC'] == num_doc, ' NAZIONE'].iloc[0]
