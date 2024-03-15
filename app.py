@@ -93,32 +93,37 @@ if uploaded_file is not None:
     # Elabora le righe dell'IVA
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
 
-    # Aggiungi le righe dell'IVA al dataframe
-    final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
+    # ...
 
-    # Rimuovi l'IVA dai 'PREZZO_1' dove necessario
-    for index, row in final_df.iterrows():
-        if row[' NAZIONE'] in countrycode_dict:
-            iva_to_remove = countrycode_dict[row[' NAZIONE']]
-            try:
-                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
-                prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
-            except Exception as e:
-                st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
+# Aggiungi le righe dell'IVA al dataframe
+final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Ordina il dataframe finale per NUM_DOC e poi per PROGRESSIVO_RIGA
-    # Converti PROGRESSIVO_RIGA in stringa per gestire correttamente le estensioni -2, -3, ecc.
-    final_df[' PROGRESSIVO_RIGA'] = final_df[' PROGRESSIVO_RIGA'].astype(str)
-    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
+# Rimuovi l'IVA dai 'PREZZO_1' dove necessario
+for index, row in final_df.iterrows():
+    if row[' NAZIONE'] in countrycode_dict and '-' not in str(row[' PROGRESSIVO_RIGA']):
+        iva_to_remove = countrycode_dict[row[' NAZIONE']]
+        try:
+            prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
+            prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
+            final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
+        except Exception as e:
+            st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    # Converti il dataframe finale in CSV
-    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
+# Ordina il dataframe finale per NUM_DOC e poi per PROGRESSIVO_RIGA
+final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
-    # Bottone per il download del file modificato
-    st.download_button(
-        label="Scarica il CSV modificato",
-        data=io.BytesIO(csv),
-        file_name='modified_CLIARTFATT.csv',
-        mime='text/csv',
-    )
+# Assegna una nuova sequenza numerica a PROGRESSIVO_RIGA
+final_df.reset_index(drop=True, inplace=True)
+final_df[' PROGRESSIVO_RIGA'] = final_df.index + 1
+
+# Converti il dataframe finale in CSV
+csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
+
+# Bottone per il download del file modificato
+st.download_button(
+    label="Scarica il CSV modificato",
+    data=io.BytesIO(csv),
+    file_name='modified_CLIARTFATT.csv',
+    mime='text/csv',
+)
+
