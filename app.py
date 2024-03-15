@@ -31,7 +31,11 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 
     for index, row in vat_rows.iterrows():
         num_doc = row[' NUM_DOC']
-        iva = countrycode_dict[row[' NAZIONE']]
+        iva_str = countrycode_dict.get(row[' NAZIONE'], "0")
+        try:
+            iva = float(iva_str)  # Assicurati che l'IVA sia un numero
+        except ValueError:
+            iva = 0.0  # Se l'IVA non è un numero valido, imposta a 0
 
         # Calcola la somma di PREZZO_1 per ogni NUM_DOC unico, considerando un solo valore per ogni PROGRESSIVO_RIGA
         unique_rows = df_original[(df_original[' NUM_DOC'] == num_doc)].drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
@@ -51,6 +55,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
     vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
     return vat_rows
+
 
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
