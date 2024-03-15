@@ -60,13 +60,6 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
-# Funzione per creare una chiave di ordinamento personalizzata
-def custom_sort(row):
-    parts = row.split('-')
-    main_part = int(parts[0])
-    sub_part = int(parts[1]) if len(parts) > 1 else 0
-    return main_part, sub_part
-
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
@@ -74,8 +67,10 @@ st.title('Modifica File CSV per Costi di Spedizione e IVA')
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
+    # Lettura del file caricato
     df = pd.read_csv(uploaded_file, delimiter=';')
 
+    # Leggi il file countrycode.txt e crea un dizionario
     try:
         countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None)
         countrycode_dict = dict(zip(countrycode_df[0], countrycode_df[2]))
@@ -83,20 +78,42 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
+    # Identifica le righe con COSTI_SPEDIZIONE diversi da 0
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
+
+    # Filtra le righe uniche basate su NUM_DOC
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
+
+    # Elabora le righe delle spedizioni
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
+
+    # Aggiungi le righe degli Shipping Costs al dataframe originale
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
+
+    # Elabora le righe dell'IVA
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
+
+    # Aggiungi le righe dell'IVA al dataframe
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Applica la funzione custom_sort e ordina
-    final_df['sort_key'] = final_df[' PROGRESSIVO_RIGA'].apply(custom_sort)
-    final_df.sort_values(by=[' NUM_DOC', 'sort_key'], inplace=True)
-    final_df.drop('sort_key', axis=1, inplace=True)
+    # Rimuovi l'IVA dai 'PREZZO_1' dove necessario
+    for index, row in final_df.iterrows():
+        if row[' NAZIONE'] in countrycode_dict and '-' not in str(row[' PROGRESSIVO_RIGA']):
+            iva_to_remove = countrycode_dict[row[' NAZIONE']]
+            try:
+                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
+                prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
+                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
+            except Exception as e:
+                st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
+    # Ordina il dataframe finale per NUM_DOC
+    final_df.sort_values(by=[' NUM_DOC'], inplace=True)
+
+    # Converti il dataframe finale in CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
+    # Bottone per il download del file modificato
     st.download_button(
         label="Scarica il CSV modificato",
         data=io.BytesIO(csv),
