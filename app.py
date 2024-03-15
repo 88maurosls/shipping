@@ -27,27 +27,30 @@ def process_shipping_rows(rows, countrycode_dict):
     return adjusted_rows
 
 # Funzione per l'elaborazione delle righe dell'IVA
-def process_vat_rows(rows, countrycode_dict):
+def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
-    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]  # Filtra solo le nazioni presenti nel dizionario
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
+
     for index, row in vat_rows.iterrows():
-        iva = countrycode_dict[row[' NAZIONE']]
-        costo_spedizione = row[' COSTI_SPEDIZIONE']
-        costo_iva = costo_spedizione * iva / 100
+        num_doc = row[' NUM_DOC']
+        iva = countrycode_dict.get(row[' NAZIONE'], 0)  # Ottieni il valore dell'IVA come numero
+
+        # Assicurati che l'IVA sia un numero
+        if not isinstance(iva, (int, float)):
+            st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
+            continue
+
+        # Calcola la somma di PREZZO_1 per ogni NUM_DOC unico
+        unique_rows = df_original[(df_original[' NUM_DOC'] == num_doc)].drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
+        try:
+            sum_prezzo = unique_rows[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
+        except Exception as e:
+            st.error(f"Errore nella somma di PREZZO_1 per NUM_DOC {num_doc}: {e}")
+            continue
+
+        costo_iva = sum_prezzo * iva / 100
         formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
-
-    vat_rows[' COD_ART'] = "VAT"
-    if ' COD_ART' in vat_rows.columns:  # Verifica se la colonna 'COD_ART' è presente nel DataFrame
-        vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
-    else:
-        st.error("La colonna 'COD_ART' non è presente nel DataFrame 'vat_rows'. Assicurati che sia stata correttamente definita.")
-    vat_rows[' DESCR_ART'] = "VAT"
-    vat_rows[' DESCR_ART_ESTESA'] = "VAT"
-    vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
-    vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
-    vat_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-    return vat_rows
 
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
