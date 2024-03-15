@@ -60,13 +60,6 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
-# Funzione per ordinare i progressivi
-def custom_sort(row):
-    parts = row[' PROGRESSIVO_RIGA'].split('-')
-    main_part = int(parts[0])  # La parte principale del progressivo
-    sub_part = int(parts[1]) if len(parts) > 1 else 0  # La parte secondaria, se esiste, altrimenti 0
-    return (row[' NUM_DOC'], main_part, sub_part)
-
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
@@ -103,15 +96,9 @@ if uploaded_file is not None:
     # Aggiungi le righe dell'IVA al dataframe
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Ordina il DataFrame per la chiave di ordinamento
-    final_df.sort_values(by='sort_key', inplace=True)
-
-    # Rimuovi la colonna di aiuto per l'ordinamento
-    final_df.drop('sort_key', axis=1, inplace=True)
-
     # Rimuovi l'IVA dai 'PREZZO_1' dove necessario
     for index, row in final_df.iterrows():
-        if row[' NAZIONE'] in countrycode_dict and '-' not in str(row[' PROGRESSIVO_RIGA']):
+        if row[' NAZIONE'] in countrycode_dict:
             iva_to_remove = countrycode_dict[row[' NAZIONE']]
             try:
                 prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
