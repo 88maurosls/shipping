@@ -112,9 +112,10 @@ for index, row in final_df.iterrows():
 # Ordina il dataframe finale per NUM_DOC e poi per PROGRESSIVO_RIGA
 final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
-# Assegna una nuova sequenza numerica a PROGRESSIVO_RIGA
-final_df.reset_index(drop=True, inplace=True)
-final_df[' PROGRESSIVO_RIGA'] = final_df.index + 1
+# Assegna una nuova sequenza numerica a PROGRESSIVO_RIGA mantenendo uguali i valori per righe identiche
+new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA'])
+                  .ngroup() + 1)
+final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
 # Converti il dataframe finale in CSV
 csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
@@ -126,4 +127,3 @@ st.download_button(
     file_name='modified_CLIARTFATT.csv',
     mime='text/csv',
 )
-
