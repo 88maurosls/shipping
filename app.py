@@ -3,26 +3,30 @@ import pandas as pd
 import io
 
 # Funzione per l'elaborazione delle righe delle spedizioni
-def process_shipping_rows(rows, countrycode_dict):
-    adjusted_rows = rows.copy()
-    for index, row in adjusted_rows.iterrows():
-        nazione = row[' NAZIONE']
-        if nazione in countrycode_dict:
-            iva = countrycode_dict[nazione]
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
-            formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
-            adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
-        else:
-            adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
-    adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
-    adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
-    adjusted_rows[' DESCR_ART'] = "Shipping Costs"
-    adjusted_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
-    adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
-    adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
-    adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-    return adjusted_rows
+def process_vat_rows(rows, countrycode_dict, df_original):
+    vat_rows = rows.copy()
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
+
+    for index, row in vat_rows.iterrows():
+        num_doc = row[' NUM_DOC']
+        iva = countrycode_dict.get(row[' NAZIONE'], 0)  # Ottieni il valore dell'IVA come numero
+
+        # Assicurati che l'IVA sia un numero
+        if not isinstance(iva, (int, float)):
+            st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
+            continue
+
+        # Calcola la somma di PREZZO_1 per ogni NUM_DOC unico
+        unique_rows = df_original[(df_original[' NUM_DOC'] == num_doc)].drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
+        try:
+            sum_prezzo = unique_rows[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
+        except Exception as e:
+            st.error(f"Errore nella somma di PREZZO_1 per NUM_DOC {num_doc}: {e}")
+            continue
+
+        costo_iva = sum_prezzo * iva / 100
+        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+        vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
 # Funzione modificata per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
