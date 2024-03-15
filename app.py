@@ -120,6 +120,3 @@ if uploaded_file is not None:
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
     )
-
-# Balloon animation as a completion indicator
-st.balloons()
