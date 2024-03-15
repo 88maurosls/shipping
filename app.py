@@ -98,16 +98,14 @@ if uploaded_file is not None:
 
     # Rimuovi l'IVA dai 'PREZZO_1' dove necessario
     for index, row in final_df.iterrows():
-    nazione = row[' NAZIONE']
-    progressivo_riga = str(row[' PROGRESSIVO_RIGA'])  # Convertiamo in stringa per sicurezza
-    if nazione in countrycode_dict and '-' not in progressivo_riga:
-        iva_to_remove = countrycode_dict[nazione]
-        try:
-            prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
-            prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-            final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
-        except Exception as e:
-            st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
+        if row[' NAZIONE'] in countrycode_dict and '-' not in str(row[' PROGRESSIVO_RIGA']):
+            iva_to_remove = countrycode_dict[row[' NAZIONE']]
+            try:
+                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
+                prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
+                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
+            except Exception as e:
+                st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
     # Ordina il dataframe finale per NUM_DOC
     final_df.sort_values(by=[' NUM_DOC'], inplace=True)
