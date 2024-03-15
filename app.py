@@ -14,9 +14,7 @@ def process_shipping_rows(rows, countrycode_dict):
             formatted_price = int(costo_senza_iva) if costo_senza_iva == int(costo_senza_iva) else costo_senza_iva
             adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
         else:
-            # Se la nazione non è nel dizionario, mantenere il valore originale di COSTI_SPEDIZIONE
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
-
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
     adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
     adjusted_rows[' DESCR_ART'] = "Shipping Costs"
@@ -33,14 +31,12 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 
     for index, row in vat_rows.iterrows():
         num_doc = row[' NUM_DOC']
-        iva = countrycode_dict.get(row[' NAZIONE'], 0)  # Ottieni il valore dell'IVA come numero
+        iva = countrycode_dict.get(row[' NAZIONE'], 0)
 
-        # Assicurati che l'IVA sia un numero
         if not isinstance(iva, (int, float)):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        # Calcola la somma di PREZZO_1 per ogni NUM_DOC unico
         unique_rows = df_original[(df_original[' NUM_DOC'] == num_doc)].drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
         try:
             sum_prezzo = unique_rows[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
@@ -51,6 +47,15 @@ def process_vat_rows(rows, countrycode_dict, df_original):
         costo_iva = sum_prezzo * iva / 100
         formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+
+    vat_rows[' COD_ART'] = "VAT"
+    vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
+    vat_rows[' DESCR_ART'] = "VAT"
+    vat_rows[' DESCR_ART_ESTESA'] = "VAT"
+    vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
+    vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
+    vat_rows[' HSCODE'] = ""
+    return vat_rows
 
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
@@ -79,11 +84,14 @@ if uploaded_file is not None:
     # Elabora le righe delle spedizioni
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
 
-    # Elabora le righe dell'IVA
-    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df)
+    # Aggiungi le righe degli Shipping Costs al dataframe originale
+    df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
 
-    # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
-    final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
+    # Elabora le righe dell'IVA
+    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
+
+    # Aggiungi le righe dell'IVA al dataframe
+    final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
     # Ordina il dataframe finale per NUM_DOC
     final_df.sort_values(by=[' NUM_DOC'], inplace=True)
