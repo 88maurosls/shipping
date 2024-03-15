@@ -86,7 +86,7 @@ if uploaded_file is not None:
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
 
     # Elabora le righe dell'IVA
-    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict)
+    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df)
 
     # Aggiungi sia le righe degli Shipping Costs che le righe dell'IVA al dataframe originale
     final_df = pd.concat([df, adjusted_rows, vat_rows], ignore_index=True)
