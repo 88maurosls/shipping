@@ -37,10 +37,10 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        # Seleziona tutte le righe con lo stesso NUM_DOC, comprese quelle aggiunte dalla funzione process_shipping_rows
-        related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
+        # Seleziona tutte le righe con lo stesso NUM_DOC, escludendo i duplicati di 'PROGRESSIVO_RIGA'
+        related_rows = df_original[df_original[' NUM_DOC'] == num_doc].drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
 
-        # Somma tutti i 'PREZZO_1' per ogni NUM_DOC unico, senza duplicati in 'PROGRESSIVO_RIGA'
+        # Calcola la somma di 'PREZZO_1' per ogni NUM_DOC unico
         try:
             sum_prezzo = related_rows[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
         except Exception as e:
@@ -49,8 +49,9 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 
         # Applica la percentuale dell'IVA
         costo_iva = sum_prezzo * iva / 100
-        formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
+        formatted_vat = round(costo_iva, 2)  # Arrotonda l'IVA a due cifre decimali
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
+
 
     # Imposta i valori per le altre colonne delle righe IVA
     vat_rows[' COD_ART'] = "VAT"
