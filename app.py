@@ -37,16 +37,12 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        # Seleziona tutte le righe con lo stesso NUM_DOC
+        # Seleziona tutte le righe con lo stesso NUM_DOC, comprese quelle aggiunte dalla funzione process_shipping_rows
         related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
 
-        # Calcola la somma di 'PREZZO_1' per ogni NUM_DOC unico, includendo i 'COSTI_SPEDIZIONE' 
-        # e considerando un solo valore per ogni 'PROGRESSIVO_RIGA'
+        # Somma tutti i 'PREZZO_1' per ogni NUM_DOC unico, senza duplicati in 'PROGRESSIVO_RIGA'
         try:
-            unique_rows = related_rows.drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
-            sum_prezzo = unique_rows[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
-            # Assicurati di includere i costi di spedizione
-            sum_prezzo += unique_rows[' COSTI_SPEDIZIONE'].str.replace(",", ".").astype(float).sum()
+            sum_prezzo = related_rows[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
         except Exception as e:
             st.error(f"Errore nella somma di PREZZO_1 per NUM_DOC {num_doc}: {e}")
             continue
@@ -56,7 +52,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
         formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
-    # Configura le altre colonne per le righe IVA
+    # Imposta i valori per le altre colonne delle righe IVA
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
     vat_rows[' DESCR_ART'] = "VAT"
@@ -65,6 +61,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 
 # Titolo dell'applicazione Streamlit
