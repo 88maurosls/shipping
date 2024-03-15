@@ -33,15 +33,18 @@ def process_vat_rows(rows, countrycode_dict, df_original):
         num_doc = row[' NUM_DOC']
         iva_str = countrycode_dict.get(row[' NAZIONE'], "0")
         try:
-            iva = float(iva_str)  # Assicurati che l'IVA sia un numero
+            iva = float(iva_str.replace(",", "."))  # Sostituisce la virgola con il punto se necessario
         except ValueError:
-            iva = 0.0  # Se l'IVA non è un numero valido, imposta a 0
+            st.error(f"Errore nella conversione dell'IVA per la nazione {row[' NAZIONE']}: {iva_str}")
+            continue
 
-        # Calcola la somma di PREZZO_1 per ogni NUM_DOC unico, considerando un solo valore per ogni PROGRESSIVO_RIGA
         unique_rows = df_original[(df_original[' NUM_DOC'] == num_doc)].drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
-        sum_prezzo = unique_rows[' PREZZO_1'].sum()
+        try:
+            sum_prezzo = unique_rows[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
+        except Exception as e:
+            st.error(f"Errore nella somma di PREZZO_1 per NUM_DOC {num_doc}: {e}")
+            continue
 
-        # Calcola l'IVA sull'importo totale
         costo_iva = sum_prezzo * iva / 100
         formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
