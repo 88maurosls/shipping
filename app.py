@@ -98,6 +98,17 @@ if uploaded_file is not None:
     # Aggiungi le righe dell'IVA al dataframe
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
+    # Ultimo passaggio per rimuovere l'IVA da 'PREZZO_1' se 'PROGRESSIVO_RIGA' non contiene '-'
+    for index, row in final_df.iterrows():
+    if row[' NAZIONE'] in countrycode_dict and '-' not in row[' PROGRESSIVO_RIGA']:
+        iva_to_deduct = countrycode_dict[row[' NAZIONE']]
+        try:
+            prezzo_1 = float(str(row[' PREZZO_1']).replace(",", "."))
+            prezzo_senza_iva = prezzo_1 / (1 + iva_to_deduct / 100)
+            final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
+        except Exception as e:
+            st.error(f"Errore nel rimuovere l'IVA da 'PREZZO_1' per la riga {index}: {e}")
+
     # Ordina il dataframe finale per NUM_DOC
     final_df.sort_values(by=[' NUM_DOC'], inplace=True)
 
