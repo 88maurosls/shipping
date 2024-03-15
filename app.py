@@ -103,6 +103,12 @@ if uploaded_file is not None:
     # Aggiungi le righe dell'IVA al dataframe
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
+    # Ordina il DataFrame per la chiave di ordinamento
+    final_df.sort_values(by='sort_key', inplace=True)
+
+    # Rimuovi la colonna di aiuto per l'ordinamento
+    final_df.drop('sort_key', axis=1, inplace=True)
+
     # Rimuovi l'IVA dai 'PREZZO_1' dove necessario
     for index, row in final_df.iterrows():
         if row[' NAZIONE'] in countrycode_dict and '-' not in str(row[' PROGRESSIVO_RIGA']):
