@@ -32,12 +32,17 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     for index, row in vat_rows.iterrows():
         num_doc = row[' NUM_DOC']
         iva = countrycode_dict[row[' NAZIONE']]
-        sum_prezzo = df_original[df_original[' NUM_DOC'] == num_doc][' PREZZO_1'].drop_duplicates().sum()
-        total_cost_with_vat = (sum_prezzo + row[' COSTI_SPEDIZIONE']) * (1 + iva / 100)
-        costo_iva = total_cost_with_vat - (sum_prezzo + row[' COSTI_SPEDIZIONE'])
+
+        # Calcola la somma di PREZZO_1 per ogni NUM_DOC unico, considerando un solo valore per ogni PROGRESSIVO_RIGA
+        unique_rows = df_original[(df_original[' NUM_DOC'] == num_doc)].drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
+        sum_prezzo = unique_rows[' PREZZO_1'].sum()
+
+        # Calcola l'IVA sull'importo totale
+        costo_iva = sum_prezzo * iva / 100
         formatted_vat = int(costo_iva) if costo_iva == int(costo_iva) else costo_iva
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
+    # Imposta i valori per le altre colonne
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
     vat_rows[' DESCR_ART'] = "VAT"
