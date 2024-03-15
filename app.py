@@ -37,31 +37,19 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        # Prendiamo tutte le righe con lo stesso NUM_DOC
         related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
 
-        # Calcoliamo la somma dei 'PREZZO_1' per ogni 'NUM_DOC'
         try:
-            # Assicurati di eseguire il drop_duplicates solo per 'PROGRESSIVO_RIGA' non IVA o spedizione
-            non_vat_shipping_rows = related_rows[~related_rows[' DESCR_ART'].isin(['VAT', 'Shipping Costs'])]
-            unique_prices_sum = non_vat_shipping_rows.drop_duplicates(subset=[' PROGRESSIVO_RIGA'])[' PREZZO_1'].str.replace(",", ".").astype(float).sum()
-
-            # Ora sommiamo i costi di spedizione
-            shipping_costs_sum = related_rows[related_rows[' DESCR_ART'] == 'Shipping Costs'][' PREZZO_1'].str.replace(",", ".").astype(float).sum()
-            
-            # La base imponibile è la somma dei prezzi unici più i costi di spedizione
-            taxable_amount = unique_prices_sum + shipping_costs_sum
-
+            # Converti 'PREZZO_1' in stringa prima della sostituzione e conversione per evitare errori
+            sum_prezzo = related_rows[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
         except Exception as e:
             st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc}: {e}")
             continue
 
-        # Applichiamo l'IVA alla base imponibile
-        costo_iva = taxable_amount * iva / 100
+        costo_iva = sum_prezzo * iva / 100
         formatted_vat = round(costo_iva, 2)  # Arrotonda l'IVA a due cifre decimali
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
 
-    # Configuriamo le altre colonne per le righe IVA
     vat_rows[' COD_ART'] = "VAT"
     vat_rows[' COD_ART_DOC'] = vat_rows[' COD_ART']
     vat_rows[' DESCR_ART'] = "VAT"
@@ -70,6 +58,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 
 # Titolo dell'applicazione Streamlit
