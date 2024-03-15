@@ -107,8 +107,10 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    # Ordina il dataframe finale per NUM_DOC
-    final_df.sort_values(by=[' NUM_DOC'], inplace=True)
+    # Ordina il dataframe finale per NUM_DOC e poi per PROGRESSIVO_RIGA
+    # Converti PROGRESSIVO_RIGA in stringa per gestire correttamente le estensioni -2, -3, ecc.
+    final_df[' PROGRESSIVO_RIGA'] = final_df[' PROGRESSIVO_RIGA'].astype(str)
+    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
     # Converti il dataframe finale in CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
