@@ -98,7 +98,7 @@ if uploaded_file is not None:
 
     # Rimuovi l'IVA dai 'PREZZO_1' dove necessario
     for index, row in final_df.iterrows():
-        if row[' NAZIONE'] in countrycode_dict and '-' not in str(row[' PROGRESSIVO_RIGA']):
+        if row[' NAZIONE'] in countrycode_dict:
             iva_to_remove = countrycode_dict[row[' NAZIONE']]
             try:
                 prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
