@@ -62,10 +62,10 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 
 # Funzione per ordinare i progressivi
 def custom_sort(row):
-    parts = row.split('-')
-    if len(parts) == 1:
-        return (int(parts[0]), 0)  # Per i valori senza estensione
-    return (int(parts[0]), int(parts[1]))  # Per i valori con estensione
+    parts = row[' PROGRESSIVO_RIGA'].split('-')
+    main_part = int(parts[0])  # La parte principale del progressivo
+    sub_part = int(parts[1]) if len(parts) > 1 else 0  # La parte secondaria, se esiste, altrimenti 0
+    return (row[' NUM_DOC'], main_part, sub_part)
 
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
