@@ -60,6 +60,13 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
+# Funzione per ordinare i progressivi
+def custom_sort(row):
+    parts = row.split('-')
+    if len(parts) == 1:
+        return (int(parts[0]), 0)  # Per i valori senza estensione
+    return (int(parts[0]), int(parts[1]))  # Per i valori con estensione
+
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
