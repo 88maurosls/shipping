@@ -10,7 +10,7 @@ def process_shipping_rows(rows, countrycode_dict):
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
-            costo_senza_iva = costo_spedizione - (costo_spedizione * iva / 100)
+            costo_spedizione / (1 + iva / 100)
             formatted_price = round(costo_senza_iva, 2)
             adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
         else:
