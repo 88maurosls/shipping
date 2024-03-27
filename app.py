@@ -101,9 +101,10 @@ if uploaded_file is not None:
 
     # Rimuovi l'IVA dai 'PREZZO_1' dove necessario e se 'PARTITA_IVA' è vuoto
     for index, row in final_df.iterrows():
-        # Converte NaN a stringa vuota e poi controlla se è vuoto o contiene solo spazi bianchi
-        partita_iva = str(row[' PARTITA_IVA']).strip()
-        if row[' NAZIONE'] in countrycode_dict and not partita_iva:
+        # Verifica se 'PARTITA_IVA' è NaN o vuoto
+        partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
+
+        if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
             iva_to_remove = countrycode_dict[row[' NAZIONE']]
             try:
                 prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
@@ -111,6 +112,7 @@ if uploaded_file is not None:
                 final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
+
 
 
 
