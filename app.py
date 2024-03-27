@@ -6,8 +6,11 @@ import io
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
     for index, row in adjusted_rows.iterrows():
+        # Verifica se 'PARTITA_IVA' è NaN o vuoto
+        partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
+        
         nazione = row[' NAZIONE']
-        if nazione in countrycode_dict:
+        if nazione in countrycode_dict and partita_iva_is_empty:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
             # Assegna il risultato del calcolo a costo_senza_iva
