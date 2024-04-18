@@ -138,7 +138,7 @@ if uploaded_file is not None:
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
     # Bottone per il download del file modificato
-    st.write("Anteprima dei dati puliti:", final_df)
+    st.write("Anteprima dei dati:", final_df)
     st.download_button(
         label="Scarica il CSV modificato",
         data=io.BytesIO(csv),
