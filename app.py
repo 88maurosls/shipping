@@ -40,6 +40,9 @@ def process_shipping_rows(rows, countrycode_dict):
 
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
+    # Escludi la nazione "86" ITALIA dalle righe da elaborare
+    rows = rows[rows[' NAZIONE'] != "86"]
+    
     vat_rows = rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
