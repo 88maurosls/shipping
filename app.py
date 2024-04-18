@@ -10,7 +10,7 @@ def process_shipping_rows(rows, countrycode_dict):
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
-            costo_spedizione = row[' COSTI_SPEDIZIONE']
+            costo_spedizione = float(row['COSTI_SPEDIZIONE'])
             try:
                 # Assegna il risultato del calcolo a costo_senza_iva
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
