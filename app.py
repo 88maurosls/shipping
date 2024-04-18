@@ -21,7 +21,7 @@ def process_shipping_rows(rows, countrycode_dict):
                 errors.append(f"Errore nella riga {index + 1}: {e}")
         else:
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
-            errors.append(f"Nazione non trovata per la riga {index + 1}: {nazione}")
+            
 
     # Stampa gli errori
     for error in errors:
