@@ -5,18 +5,27 @@ import io
 # Funzione per l'elaborazione delle righe delle spedizioni
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
+    errors = []  # Lista per memorizzare gli errori
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             costo_spedizione = row[' COSTI_SPEDIZIONE']
-            # Assegna il risultato del calcolo a costo_senza_iva
-            costo_senza_iva = costo_spedizione / (1 + iva / 100)
-            # Ora puoi arrotondare costo_senza_iva senza errori
-            formatted_price = round(costo_senza_iva, 2)
-            adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
+            try:
+                # Assegna il risultato del calcolo a costo_senza_iva
+                costo_senza_iva = costo_spedizione / (1 + iva / 100)
+                # Ora puoi arrotondare costo_senza_iva senza errori
+                formatted_price = round(costo_senza_iva, 2)
+                adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
+            except Exception as e:
+                errors.append(f"Errore nella riga {index + 1}: {e}")
         else:
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
+            errors.append(f"Nazione non trovata per la riga {index + 1}: {nazione}")
+
+    # Stampa gli errori
+    for error in errors:
+        st.error(error)
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
     adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
@@ -26,6 +35,7 @@ def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
     return adjusted_rows
+
 
 
 # Funzione per l'elaborazione delle righe dell'IVA
