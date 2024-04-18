@@ -40,10 +40,10 @@ def process_shipping_rows(rows, countrycode_dict):
 
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
-    # Escludi la nazione "86" ITALIA dalle righe da elaborare
-    rows = rows[rows[' NAZIONE'] != "86"]
-    
+    # Escludi la nazione "69" dalle righe da elaborare
     vat_rows = rows.copy()
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]
+
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
@@ -75,6 +75,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
