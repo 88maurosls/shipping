@@ -5,6 +5,8 @@ import io
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
     errors = []  # Lista per memorizzare gli errori
+    rows_to_add = []  # Lista per memorizzare le righe valide da aggiungere
+
     for index, row in adjusted_rows.iterrows():
         try:
             costo_spedizione = float(row[' COSTI_SPEDIZIONE'].strip().replace(',', '.'))
@@ -12,9 +14,9 @@ def process_shipping_rows(rows, countrycode_dict):
             errors.append(f"Valore non valido per COSTI_SPEDIZIONE nella riga {index + 1}: {row[' COSTI_SPEDIZIONE']} - {ve}")
             continue
 
-        # Controllo esplicito per saltare le righe con COSTI_SPEDIZIONE pari a 0
+        # Se il costo di spedizione è zero, salta questa riga
         if costo_spedizione == 0:
-            continue  # Salta la riga, non fare nulla
+            continue
 
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
@@ -22,26 +24,27 @@ def process_shipping_rows(rows, countrycode_dict):
             try:
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
                 formatted_price = round(costo_senza_iva, 2)
-                adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
-            except ValueError as ve:
-                errors.append(f"Valore non valido per COSTI_SPEDIZIONE nella riga {index + 1}: {row[' COSTI_SPEDIZIONE']} - {ve}")
+                row[' PREZZO_1'] = formatted_price
             except Exception as e:
                 errors.append(f"Errore nella riga {index + 1}: {e}")
-        else:
-            adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
+                continue  # Se c'è un errore, passa alla prossima riga
+
+        row[' COD_ART'] = f"SHIPPINGCOSTS{costo_spedizione}"
+        row[' COD_ART_DOC'] = row[' COD_ART']
+        row[' DESCR_ART'] = "Shipping Costs"
+        row[' DESCR_ART_ESTESA'] = "Shipping Costs"
+        row[' DESCRIZIONE_RIGA'] = "Shipping Costs"
+        row[' PROGRESSIVO_RIGA'] = f"{row[' PROGRESSIVO_RIGA']}-2"
+        row[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+
+        rows_to_add.append(row.copy())  # Aggiungi solo le righe valide
 
     # Stampa gli errori
     for error in errors:
         st.error(error)
 
-    adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
-    adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
-    adjusted_rows[' DESCR_ART'] = "Shipping Costs"
-    adjusted_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
-    adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
-    adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
-    adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-    return adjusted_rows
+    # Restituisci solo le righe valide
+    return pd.DataFrame(rows_to_add)
 
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
