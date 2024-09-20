@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per l'elaborazione delle righe delle spedizioni
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
     errors = []  # Lista per memorizzare gli errori
@@ -15,7 +14,7 @@ def process_shipping_rows(rows, countrycode_dict):
 
         # Controllo esplicito per saltare le righe con COSTI_SPEDIZIONE pari a 0
         if costo_spedizione == 0:
-            continue
+            continue  # Salta la riga, non fare nulla
 
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
@@ -34,6 +33,9 @@ def process_shipping_rows(rows, countrycode_dict):
     # Stampa gli errori
     for error in errors:
         st.error(error)
+
+    # Applica le modifiche solo alle righe valide (dove costo_spedizione > 0)
+    adjusted_rows = adjusted_rows[adjusted_rows[' COSTI_SPEDIZIONE'] > 0]
 
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
     adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
