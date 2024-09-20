@@ -109,7 +109,7 @@ if uploaded_file is not None:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
     # Sostituisci i valori '0' nella colonna ' COD_SDI' con '0000000'
-    final_df[' COD_SDI'] = final_df[' COD_SDI'].apply(lambda x: '0000000' if str(x).strip() == '0' else ('' if pd.isna(x) else x))
+    final_df[' COD_SDI'] = final_df[' COD_SDI'].apply(lambda x: "'0000000'" if str(x).strip() == '0' else ('' if pd.isna(x) else x))
 
     # Assicurati che ' COD_SDI' sia trattato come stringa
     final_df[' COD_SDI'] = final_df[' COD_SDI'].astype(str)
@@ -122,7 +122,7 @@ if uploaded_file is not None:
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
     # Creazione del file CSV
-    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f', quoting=csv.QUOTE_NONNUMERIC).encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')    
+    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')  
 
     st.write("Anteprima dei dati:", final_df)
     st.download_button(
