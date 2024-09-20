@@ -34,9 +34,6 @@ def process_shipping_rows(rows, countrycode_dict):
     for error in errors:
         st.error(error)
 
-    # Applica le modifiche solo alle righe valide (dove costo_spedizione > 0)
-    adjusted_rows = adjusted_rows[adjusted_rows[' COSTI_SPEDIZIONE'] > 0]
-
     adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
     adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
     adjusted_rows[' DESCR_ART'] = "Shipping Costs"
