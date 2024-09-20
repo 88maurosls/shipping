@@ -110,6 +110,9 @@ if uploaded_file is not None:
     # Sostituisci i valori '0' nella colonna ' COD_SDI' con '0000000'
     final_df[' COD_SDI'] = final_df[' COD_SDI'].apply(lambda x: '0000000' if str(x).strip() == '0' else x)
 
+    # Assicurati che ' COD_SDI' sia trattato come stringa
+    final_df[' COD_SDI'] = final_df[' COD_SDI'].astype(str)
+
     # Ordina e gestisci i nuovi progressivi
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
