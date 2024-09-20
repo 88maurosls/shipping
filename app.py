@@ -108,7 +108,7 @@ if uploaded_file is not None:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
     # Sostituisci i valori '0' nella colonna ' COD_SDI' con '0000000'
-    final_df[' COD_SDI'] = final_df[' COD_SDI'].apply(lambda x: '0000000' if str(x).strip() == '0' else x)
+    final_df[' COD_SDI'] = final_df[' COD_SDI'].apply(lambda x: '0000000' if str(x).strip() == '0' else ('' if pd.isna(x) else x))
 
     # Assicurati che ' COD_SDI' sia trattato come stringa
     final_df[' COD_SDI'] = final_df[' COD_SDI'].astype(str)
