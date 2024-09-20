@@ -122,7 +122,7 @@ if uploaded_file is not None:
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
     # Creazione del file CSV
-    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')  
+    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
     st.write("Anteprima dei dati:", final_df)
     st.download_button(
