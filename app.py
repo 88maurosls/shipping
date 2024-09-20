@@ -107,12 +107,17 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
+    # Sostituisci i valori '0' nella colonna ' COD_SDI' con '0000000'
+    final_df[' COD_SDI'] = final_df[' COD_SDI'].apply(lambda x: '0000000' if str(x).strip() == '0' else x)
+
+    # Ordina e gestisci i nuovi progressivi
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
     new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA'])
                       .ngroup() + 1)
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
+    # Creazione del file CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
     st.write("Anteprima dei dati:", final_df)
