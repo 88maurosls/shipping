@@ -7,12 +7,20 @@ def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
     errors = []  # Lista per memorizzare gli errori
     for index, row in adjusted_rows.iterrows():
+        try:
+            costo_spedizione = float(row[' COSTI_SPEDIZIONE'].strip().replace(',', '.'))
+        except ValueError as ve:
+            errors.append(f"Valore non valido per COSTI_SPEDIZIONE nella riga {index + 1}: {row[' COSTI_SPEDIZIONE']} - {ve}")
+            continue
+
+        # Controllo esplicito per saltare le righe con COSTI_SPEDIZIONE pari a 0
+        if costo_spedizione == 0:
+            continue
+
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             try:
-                # Rimuovi spazi bianchi, sostituisci virgole con punti e converti a float
-                costo_spedizione = float(row[' COSTI_SPEDIZIONE'].strip().replace(',', '.'))
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
                 formatted_price = round(costo_senza_iva, 2)
                 adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
@@ -22,7 +30,7 @@ def process_shipping_rows(rows, countrycode_dict):
                 errors.append(f"Errore nella riga {index + 1}: {e}")
         else:
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
-            
+
     # Stampa gli errori
     for error in errors:
         st.error(error)
