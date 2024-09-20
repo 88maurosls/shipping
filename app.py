@@ -3,18 +3,17 @@ import pandas as pd
 import io
 
 def process_shipping_rows(rows, countrycode_dict):
-    adjusted_rows = rows.copy()
+    adjusted_rows = []  # Lista per memorizzare solo le righe valide
     errors = []  # Lista per memorizzare gli errori
-    rows_to_add = []  # Lista per memorizzare le righe valide da aggiungere
 
-    for index, row in adjusted_rows.iterrows():
+    for index, row in rows.iterrows():
         try:
             costo_spedizione = float(row[' COSTI_SPEDIZIONE'].strip().replace(',', '.'))
         except ValueError as ve:
             errors.append(f"Valore non valido per COSTI_SPEDIZIONE nella riga {index + 1}: {row[' COSTI_SPEDIZIONE']} - {ve}")
             continue
 
-        # Se il costo di spedizione è zero, salta questa riga
+        # Se il costo di spedizione è zero, non aggiungere la riga
         if costo_spedizione == 0:
             continue
 
@@ -37,14 +36,14 @@ def process_shipping_rows(rows, countrycode_dict):
         row[' PROGRESSIVO_RIGA'] = f"{row[' PROGRESSIVO_RIGA']}-2"
         row[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
 
-        rows_to_add.append(row.copy())  # Aggiungi solo le righe valide
+        adjusted_rows.append(row.copy())  # Aggiungi solo le righe valide
 
     # Stampa gli errori
     for error in errors:
         st.error(error)
 
     # Restituisci solo le righe valide
-    return pd.DataFrame(rows_to_add)
+    return pd.DataFrame(adjusted_rows)
 
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
