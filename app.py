@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per elaborare le righe di spedizione mantenendo invariati i valori per i clienti italiani
+# Funzione per processare le righe di spedizione
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = []  # Lista per memorizzare solo le righe valide
     errors = []  # Lista per memorizzare gli errori
@@ -22,7 +22,7 @@ def process_shipping_rows(rows, countrycode_dict):
 
         # Blocco totale per i clienti italiani (NAZIONE == 86)
         if nazione == '86':
-            # Lasciamo il prezzo e i costi di spedizione inalterati per l'Italia
+            # Lasciamo il prezzo e i costi di spedizione inalterati
             adjusted_rows.append(row.copy())
             continue
 
@@ -54,7 +54,7 @@ def process_shipping_rows(rows, countrycode_dict):
     # Restituisci solo le righe valide
     return pd.DataFrame(adjusted_rows)
 
-# Funzione per elaborare le righe IVA mantenendo invariati i valori per i clienti italiani
+# Funzione per processare le righe IVA mantenendo invariati i valori per i clienti italiani
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]  # Escludiamo l'Italia
