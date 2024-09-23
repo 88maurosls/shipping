@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per processare le righe di spedizione
+# Funzione per evitare qualsiasi modifica del prezzo per i clienti italiani
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = []  # Lista per memorizzare solo le righe valide
     errors = []  # Lista per memorizzare gli errori
@@ -20,9 +20,10 @@ def process_shipping_rows(rows, countrycode_dict):
 
         nazione = row[' NAZIONE']
 
-        # Escludiamo i clienti italiani (NAZIONE == 86) dalle modifiche
+        # Blocco totale per i clienti italiani (NAZIONE == 86)
         if nazione == '86':
-            continue  # Ignoriamo completamente qualsiasi modifica per l'Italia
+            # Lasciamo il prezzo inalterato
+            continue
 
         # Procediamo con la modifica solo per clienti non italiani
         if nazione in countrycode_dict:
@@ -114,23 +115,8 @@ if uploaded_file is not None:
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    for index, row in final_df.iterrows():
-        partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
-
-        # Modifica: non scorporare l'IVA per i clienti italiani
-        if row[' NAZIONE'] == '86':
-            # Reinseriamo il prezzo originale per l'Italia
-            final_df.at[index, ' PREZZO_1'] = row['PREZZO_1_ORIGINALE']
-            continue  # Salta qualsiasi elaborazione
-
-        if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
-            iva_to_remove = countrycode_dict[row[' NAZIONE']]
-            try:
-                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
-                prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
-            except Exception as e:
-                st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
+    # Reinseriamo i prezzi originali per tutti i clienti italiani (dopo tutte le elaborazioni)
+    final_df.loc[final_df[' NAZIONE'] == '86', ' PREZZO_1'] = final_df['PREZZO_1_ORIGINALE']
 
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
