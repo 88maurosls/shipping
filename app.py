@@ -18,7 +18,7 @@ def process_shipping_rows(rows, countrycode_dict):
             continue
 
         nazione = row[' NAZIONE']
-        if nazione in countrycode_dict and nazione != "IT":  # Modifica: escludiamo l'Italia
+        if nazione in countrycode_dict and nazione != "86":  # Modifica: escludiamo l'Italia
             iva = countrycode_dict[nazione]
             try:
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
@@ -108,7 +108,7 @@ if uploaded_file is not None:
         partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
 
         # Modifica: non scorporare l'IVA per i clienti italiani
-        if row[' NAZIONE'] == 'IT':
+        if row[' NAZIONE'] == '86':
             continue
 
         if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
