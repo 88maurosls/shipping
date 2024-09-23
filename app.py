@@ -91,9 +91,10 @@ if uploaded_file is not None:
     # Creazione di un dizionario per il mappaggio nome maiuscolo -> nome originale
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
     name_mapping = {rag.upper(): rag for rag in all_rags}
+    sorted_keys = sorted(name_mapping.keys())  # Chiavi ordinate del dizionario
 
     # Creazione di checkbox per selezionare più "RAG_SOCIALE"
-    selected_rags_upper = [rag for rag, _ in name_mapping.items() if st.checkbox(rag, key=rag)]
+    selected_rags_upper = [key for key in sorted_keys if st.checkbox(key, key=key)]
 
     # Applica il filtro utilizzando i nomi originali
     if selected_rags_upper:
@@ -101,6 +102,7 @@ if uploaded_file is not None:
         df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
+
 
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
