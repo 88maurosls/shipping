@@ -88,6 +88,15 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
+    # Aggiungi un filtro per "RAG_SOCIALE"
+    all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
+    all_rags.sort()
+    selected_rag = st.selectbox('Seleziona RAG_SOCIALE:', ['TUTTI'] + all_rags)
+
+    # Applica il filtro
+    if selected_rag != 'TUTTI':
+        df = df[df[' RAG_SOCIALE'] == selected_rag]
+
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
@@ -115,7 +124,7 @@ if uploaded_file is not None:
 
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
-    st.write("Anteprima dei dati:", final_df)
+    st.write("Anteprima dei dati filtrati:", final_df)
     st.download_button(
         label="Scarica il CSV modificato",
         data=io.BytesIO(csv),
