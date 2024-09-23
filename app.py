@@ -120,7 +120,7 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    final_df.sort_values by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
+    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
     new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
