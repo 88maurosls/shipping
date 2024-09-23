@@ -107,6 +107,10 @@ if uploaded_file is not None:
     for index, row in final_df.iterrows():
         partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
 
+        # Modifica: non scorporare l'IVA per i clienti italiani
+        if row[' NAZIONE'] == 'IT':
+            continue
+
         if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
             iva_to_remove = countrycode_dict[row[' NAZIONE']]
             try:
