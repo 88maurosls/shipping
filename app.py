@@ -88,17 +88,19 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Creazione di checkbox per selezionare più "RAG_SOCIALE"
+    # Creazione di un dizionario per il mappaggio nome maiuscolo -> nome originale
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
-    all_rags = sorted([rag.upper() for rag in all_rags])  # Converti in maiuscolo e ordina alfabeticamente prima di convertire
-    selected_rags = [rag for rag in all_rags if st.checkbox(rag, key=rag)]
+    name_mapping = {rag.upper(): rag for rag in all_rags}
 
-    # Applica il filtro
-    if selected_rags:
+    # Creazione di checkbox per selezionare più "RAG_SOCIALE"
+    selected_rags_upper = [rag for rag, _ in name_mapping.items() if st.checkbox(rag, key=rag)]
+
+    # Applica il filtro utilizzando i nomi originali
+    if selected_rags_upper:
+        selected_rags = [name_mapping[rag] for rag in selected_rags_upper]
         df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
-
 
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
