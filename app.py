@@ -8,21 +8,14 @@ def process_shipping_rows(rows, countrycode_dict):
     errors = []  # Lista per memorizzare gli errori
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
-        costo_spedizione = row[' COSTI_SPEDIZIONE'].strip().replace(',', '.')
-        
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             try:
                 # Rimuovi spazi bianchi, sostituisci virgole con punti e converti a float
-                costo_spedizione = float(costo_spedizione)
-                if costo_spedizione != 0:
-                    costo_senza_iva = costo_spedizione / (1 + iva / 100)
-                    formatted_price = round(costo_senza_iva, 2)
-                    adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
-                    adjusted_rows.at[index, ' COD_ART'] = f"SHIPPINGCOSTS{formatted_price}"
-                else:
-                    # Per costi di spedizione pari a 0, non modificare il codice articolo e ignorare la riga
-                    continue
+                costo_spedizione = float(row[' COSTI_SPEDIZIONE'].strip().replace(',', '.'))
+                costo_senza_iva = costo_spedizione / (1 + iva / 100)
+                formatted_price = round(costo_senza_iva, 2)
+                adjusted_rows.at[index, ' PREZZO_1'] = formatted_price
             except ValueError as ve:
                 errors.append(f"Valore non valido per COSTI_SPEDIZIONE nella riga {index + 1}: {row[' COSTI_SPEDIZIONE']} - {ve}")
             except Exception as e:
@@ -30,22 +23,18 @@ def process_shipping_rows(rows, countrycode_dict):
         else:
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
-    # Aggiungi informazioni mancanti solo per le righe modificate
-    adjusted_rows = adjusted_rows[adjusted_rows[' COD_ART'].str.startswith('SHIPPINGCOSTS')]
+    # Stampa gli errori
+    for error in errors:
+        st.error(error)
+
+    adjusted_rows[' COD_ART'] = adjusted_rows[' COSTI_SPEDIZIONE'].apply(lambda x: f"SHIPPINGCOSTS{x}")
     adjusted_rows[' COD_ART_DOC'] = adjusted_rows[' COD_ART']
     adjusted_rows[' DESCR_ART'] = "Shipping Costs"
     adjusted_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
     adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
-
-    # Stampa gli errori
-    for error in errors:
-        st.error(error)
-
     return adjusted_rows
-
-
 
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
@@ -106,9 +95,11 @@ if uploaded_file is not None:
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
+    # Rimuovi le righe con COD_ART uguale a 'SHIPPINGCOSTS0'
+    final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
+
     for index, row in final_df.iterrows():
         partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
-
         if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
             iva_to_remove = countrycode_dict[row[' NAZIONE']]
             try:
@@ -119,9 +110,7 @@ if uploaded_file is not None:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
-
-    new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA'])
-                      .ngroup() + 1)
+    new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
