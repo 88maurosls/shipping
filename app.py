@@ -18,7 +18,7 @@ def process_shipping_rows(rows, countrycode_dict):
             continue
 
         nazione = row[' NAZIONE']
-        if nazione in countrycode_dict:
+        if nazione in countrycode_dict and nazione != "IT":  # Modifica: escludiamo l'Italia
             iva = countrycode_dict[nazione]
             try:
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
