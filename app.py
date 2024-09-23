@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per processare le righe di spedizione
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = []  # Lista per memorizzare solo le righe valide
     errors = []  # Lista per memorizzare gli errori
@@ -19,14 +18,6 @@ def process_shipping_rows(rows, countrycode_dict):
             continue
 
         nazione = row[' NAZIONE']
-
-        # Blocco totale per i clienti italiani (NAZIONE == 86)
-        if nazione == '86':
-            # Lasciamo il prezzo e i costi di spedizione inalterati
-            adjusted_rows.append(row.copy())
-            continue
-
-        # Procediamo con la modifica solo per clienti non italiani
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             try:
@@ -54,10 +45,10 @@ def process_shipping_rows(rows, countrycode_dict):
     # Restituisci solo le righe valide
     return pd.DataFrame(adjusted_rows)
 
-# Funzione per processare le righe IVA mantenendo invariati i valori per i clienti italiani
+# Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
-    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]  # Escludiamo l'Italia
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
@@ -106,10 +97,6 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Manteniamo una copia dei prezzi originali e dei costi di spedizione per i clienti italiani
-    df['PREZZO_1_ORIGINALE'] = df[' PREZZO_1']
-    df['COSTI_SPEDIZIONE_ORIGINALE'] = df[' COSTI_SPEDIZIONE']
-    
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
@@ -117,9 +104,17 @@ if uploaded_file is not None:
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Reinseriamo i prezzi originali e i costi di spedizione originali per i clienti italiani
-    final_df.loc[final_df[' NAZIONE'] == '86', ' PREZZO_1'] = final_df['PREZZO_1_ORIGINALE']
-    final_df.loc[final_df[' NAZIONE'] == '86', ' COSTI_SPEDIZIONE'] = final_df['COSTI_SPEDIZIONE_ORIGINALE']
+    for index, row in final_df.iterrows():
+        partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
+
+        if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
+            iva_to_remove = countrycode_dict[row[' NAZIONE']]
+            try:
+                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
+                prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
+                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
+            except Exception as e:
+                st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
