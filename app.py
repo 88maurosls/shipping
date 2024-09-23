@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per elaborare le righe di spedizione
+# Funzione per processare le righe di spedizione
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = []  # Lista per memorizzare solo le righe valide
     errors = []  # Lista per memorizzare gli errori
@@ -20,8 +20,12 @@ def process_shipping_rows(rows, countrycode_dict):
 
         nazione = row[' NAZIONE']
 
-        # Verifica se non è cliente italiano (NAZIONE != 86)
-        if nazione in countrycode_dict and nazione != "86":
+        # Escludiamo i clienti italiani (NAZIONE == 86) dalle modifiche
+        if nazione == '86':
+            continue  # Ignoriamo completamente qualsiasi modifica per l'Italia
+
+        # Procediamo con la modifica solo per clienti non italiani
+        if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             try:
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
@@ -48,10 +52,10 @@ def process_shipping_rows(rows, countrycode_dict):
     # Restituisci solo le righe valide
     return pd.DataFrame(adjusted_rows)
 
-# Funzione per elaborare le righe IVA
+# Funzione per processare le righe IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
-    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]  # Escludiamo l'Italia
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
@@ -117,7 +121,7 @@ if uploaded_file is not None:
         if row[' NAZIONE'] == '86':
             # Reinseriamo il prezzo originale per l'Italia
             final_df.at[index, ' PREZZO_1'] = row['PREZZO_1_ORIGINALE']
-            continue
+            continue  # Salta qualsiasi elaborazione
 
         if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
             iva_to_remove = countrycode_dict[row[' NAZIONE']]
@@ -127,9 +131,6 @@ if uploaded_file is not None:
                 final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
-
-    # Reinseriamo i prezzi originali per tutti i clienti italiani (dopo tutte le elaborazioni)
-    final_df.loc[final_df[' NAZIONE'] == '86', ' PREZZO_1'] = final_df['PREZZO_1_ORIGINALE']
 
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
