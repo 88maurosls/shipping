@@ -88,14 +88,16 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Aggiungi un filtro per "RAG_SOCIALE"
+    # Creazione di checkbox per selezionare più "RAG_SOCIALE"
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
     all_rags.sort()
-    selected_rag = st.selectbox('Seleziona RAG_SOCIALE:', ['TUTTI'] + all_rags)
+    selected_rags = [rag for rag in all_rags if st.checkbox(rag, key=rag)]
 
     # Applica il filtro
-    if selected_rag != 'TUTTI':
-        df = df[df[' RAG_SOCIALE'] == selected_rag]
+    if selected_rags:
+        df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
+    else:
+        st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
