@@ -18,7 +18,7 @@ def process_shipping_rows(rows, countrycode_dict):
             continue
 
         nazione = row[' NAZIONE']
-        if nazione in countrycode_dict and nazione != "86":  # Modifica: escludiamo l'Italia
+        if nazione in countrycode_dict and nazione != "86":  # Escludiamo l'Italia
             iva = countrycode_dict[nazione]
             try:
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
@@ -97,6 +97,9 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
+    # Manteniamo una copia dei prezzi originali per i clienti italiani
+    df['PREZZO_1_ORIGINALE'] = df[' PREZZO_1']
+    
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
@@ -109,6 +112,8 @@ if uploaded_file is not None:
 
         # Modifica: non scorporare l'IVA per i clienti italiani
         if row[' NAZIONE'] == '86':
+            # Reinseriamo il prezzo originale per l'Italia
+            final_df.at[index, ' PREZZO_1'] = row['PREZZO_1_ORIGINALE']
             continue
 
         if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
