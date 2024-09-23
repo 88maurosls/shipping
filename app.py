@@ -90,7 +90,7 @@ if uploaded_file is not None:
 
     # Creazione di checkbox per selezionare più "RAG_SOCIALE"
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
-    all_rags.sort()
+    all_rags = [rag.upper() for rag in sorted(all_rags)]  # Converti in maiuscolo e ordina alfabeticamente
     selected_rags = [rag for rag in all_rags if st.checkbox(rag, key=rag)]
 
     # Applica il filtro
@@ -120,7 +120,7 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
+    final_df.sort_values by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
     new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
