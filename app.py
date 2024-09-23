@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Funzione per evitare qualsiasi modifica del prezzo per i clienti italiani
+# Funzione per elaborare le righe di spedizione mantenendo invariati i valori per i clienti italiani
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = []  # Lista per memorizzare solo le righe valide
     errors = []  # Lista per memorizzare gli errori
@@ -22,7 +22,8 @@ def process_shipping_rows(rows, countrycode_dict):
 
         # Blocco totale per i clienti italiani (NAZIONE == 86)
         if nazione == '86':
-            # Lasciamo il prezzo inalterato
+            # Lasciamo il prezzo e i costi di spedizione inalterati per l'Italia
+            adjusted_rows.append(row.copy())
             continue
 
         # Procediamo con la modifica solo per clienti non italiani
@@ -53,7 +54,7 @@ def process_shipping_rows(rows, countrycode_dict):
     # Restituisci solo le righe valide
     return pd.DataFrame(adjusted_rows)
 
-# Funzione per processare le righe IVA
+# Funzione per elaborare le righe IVA mantenendo invariati i valori per i clienti italiani
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]  # Escludiamo l'Italia
@@ -105,8 +106,9 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Manteniamo una copia dei prezzi originali per i clienti italiani
+    # Manteniamo una copia dei prezzi originali e dei costi di spedizione per i clienti italiani
     df['PREZZO_1_ORIGINALE'] = df[' PREZZO_1']
+    df['COSTI_SPEDIZIONE_ORIGINALE'] = df[' COSTI_SPEDIZIONE']
     
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
@@ -115,8 +117,9 @@ if uploaded_file is not None:
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Reinseriamo i prezzi originali per tutti i clienti italiani (dopo tutte le elaborazioni)
+    # Reinseriamo i prezzi originali e i costi di spedizione originali per i clienti italiani
     final_df.loc[final_df[' NAZIONE'] == '86', ' PREZZO_1'] = final_df['PREZZO_1_ORIGINALE']
+    final_df.loc[final_df[' NAZIONE'] == '86', ' COSTI_SPEDIZIONE'] = final_df['COSTI_SPEDIZIONE_ORIGINALE']
 
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
 
