@@ -76,12 +76,16 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 def load_countries_no_cod_fiscale(file_path):
     try:
         with open(file_path, 'r') as file:
-            countries = file.read().splitlines()
-            countries = [country.strip('"') for country in countries]  # Rimuovi eventuali doppi apici
+            content = file.read()
+            # Rimuovi righe di commento e spazi bianchi inutili
+            content = content.replace("# Elenco dei paesi da controllare", "").replace("\n", "").replace(" ", "")
+            # Converti la stringa in una lista di paesi rimuovendo virgolette e split sui paesi
+            countries = content.replace('"', '').split(",")
         return countries
     except Exception as e:
         st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
         return []
+
 
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
@@ -140,8 +144,10 @@ if uploaded_file is not None:
 
     # Ultimo controllo sulla colonna "COD_FISCALE" per lasciare vuoto se presente nel file no_cod_fiscale.txt
     for index, row in final_df.iterrows():
-        if row[' COD_FISCALE'] in countries_no_cod_fiscale:
+        cod_fiscale = str(row[' COD_FISCALE']).strip()  # Rimuovi eventuali spazi
+        if cod_fiscale in countries_no_cod_fiscale:
             final_df.at[index, ' COD_FISCALE'] = ""
+
 
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
     new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
