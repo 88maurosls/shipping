@@ -78,11 +78,11 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
         cod_fiscale = row[' COD_FISCALE']
         if pd.isna(cod_fiscale):
             continue  # Salta se COD_FISCALE è NaN o vuoto
-        cod_fiscale = str(cod_fiscale).strip().upper()  # Converte in maiuscolo e rimuove spazi bianchi
+        cod_fiscale = str(cod_fiscale).strip().upper()  # Converte in maiuscolo per il confronto
         if cod_fiscale in no_cod_fiscale_list:
             df.at[index, ' COD_FISCALE'] = ""  # Svuota la cella se il valore è presente in no_cod_fiscale_list
         else:
-            df.at[index, ' COD_FISCALE'] = cod_fiscale  # Aggiorna con il valore maiuscolo
+            df.at[index, ' COD_FISCALE'] = cod_fiscale  # Mantieni il valore maiuscolo
     return df
 
 # Titolo dell'applicazione Streamlit
@@ -105,7 +105,8 @@ if uploaded_file is not None:
     try:
         with open('no_cod_fiscale.txt', 'r') as f:
             no_cod_fiscale_content = f.read().strip()
-            no_cod_fiscale_list = no_cod_fiscale_content.split(';')
+            # Assicurati che i nomi nel file siano tutti maiuscoli per il confronto
+            no_cod_fiscale_list = [x.strip().upper() for x in no_cod_fiscale_content.split(';')]
     except Exception as e:
         st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
         no_cod_fiscale_list = []
