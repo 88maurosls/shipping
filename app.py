@@ -11,7 +11,6 @@ def process_shipping_rows(rows, countrycode_dict):
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             try:
-                # Rimuovi spazi bianchi, sostituisci virgole con punti e converti a float
                 costo_spedizione = float(row[' COSTI_SPEDIZIONE'].strip().replace(',', '.'))
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
                 formatted_price = round(costo_senza_iva, 2)
@@ -23,7 +22,6 @@ def process_shipping_rows(rows, countrycode_dict):
         else:
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
-    # Stampa gli errori
     for error in errors:
         st.error(error)
 
@@ -85,7 +83,7 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
             df.at[index, ' COD_FISCALE'] = cod_fiscale  # Mantieni il valore maiuscolo
     return df
 
-# Esporta il CSV mantenendo i punti nelle mail e sostituendo solo per i numeri
+# Funzione per formattare escludendo la colonna "MAIL"
 def format_excluding_mail(df):
     """Funzione per formattare le colonne escludendo la colonna MAIL"""
     for col in df.columns:
@@ -166,13 +164,16 @@ if uploaded_file is not None:
     # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
 
-    # Resto del codice per la generazione e il download del CSV
-    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
+    # Applica la formattazione a tutte le colonne tranne "MAIL"
+    final_df_formatted = format_excluding_mail(final_df)
 
-    st.write("Anteprima dei dati filtrati:", final_df)
+    # Resto del codice per la generazione e il download del CSV
+    csv = final_df_formatted.to_csv(sep=';', index=False, encoding='utf-8')
+
+    st.write("Anteprima dei dati filtrati:", final_df_formatted)
     st.download_button(
         label="Scarica il CSV modificato",
-        data=io.BytesIO(csv),
+        data=io.BytesIO(csv.encode('utf-8')),
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
     )
