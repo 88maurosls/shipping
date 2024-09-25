@@ -158,18 +158,12 @@ if uploaded_file is not None:
     # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
 
-    # Sostituisci i punti con le virgole in tutte le colonne, tranne "MAIL"
-    for col in final_df.columns:
-        if col != ' MAIL':  # Escludi la colonna ' MAIL' dalla sostituzione
-            final_df[col] = final_df[col].astype(str).str.replace('.', ',')
+    # Sostituisci le virgole con punti nella colonna 'MAIL'
+    final_df[' MAIL'] = final_df[' MAIL'].str.replace(',', '.', regex=False)
 
-    # Assicuriamoci che la colonna "MAIL" non venga toccata, ma i suoi punti siano mantenuti corretti
-    final_df[' MAIL'] = final_df[' MAIL'].str.replace(',', '.')  # Nel caso ci siano virgole nelle mail
+    # Resto del codice per la generazione e il download del CSV
+    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
-    # Esporta il CSV
-    csv = final_df.to_csv(sep=';', index=False).encode('utf-8')
-
-    # Resto del codice per lo scaricamento
     st.write("Anteprima dei dati filtrati:", final_df)
     st.download_button(
         label="Scarica il CSV modificato",
