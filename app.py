@@ -72,6 +72,14 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
+# Funzione per la rimozione dei valori in "COD_FISCALE" basati su no_cod_fiscale.txt
+def remove_cod_fiscale(df, no_cod_fiscale_list):
+    for index, row in df.iterrows():
+        cod_fiscale = row[' COD_FISCALE'].strip()
+        if cod_fiscale in no_cod_fiscale_list:
+            df.at[index, ' COD_FISCALE'] = ""  # Svuota la cella se il valore è presente in no_cod_fiscale_list
+    return df
+
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
@@ -88,6 +96,15 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
+    # Leggi il file no_cod_fiscale.txt
+    try:
+        with open('no_cod_fiscale.txt', 'r') as f:
+            no_cod_fiscale_content = f.read().strip()
+            no_cod_fiscale_list = no_cod_fiscale_content.split(';')
+    except Exception as e:
+        st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
+        no_cod_fiscale_list = []
+
     # Creazione di un dizionario per il mappaggio nome maiuscolo -> nome originale
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
     name_mapping = {rag.upper(): rag for rag in all_rags}
@@ -102,7 +119,6 @@ if uploaded_file is not None:
         df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
-
 
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
@@ -125,10 +141,15 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
+    # Ordina e aggiorna i progressivi
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
     new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
+    # Applica la funzione per rimuovere i valori da COD_FISCALE
+    final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
+
+    # Resto del codice per la generazione e il download del CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
     st.write("Anteprima dei dati filtrati:", final_df)
