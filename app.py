@@ -157,6 +157,9 @@ if uploaded_file is not None:
     # Applica la funzione per rimuovere i valori da COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
 
+    # Assicurati che 'ALI_IVA' sia numerico prima del confronto
+    final_df[' ALI_IVA'] = pd.to_numeric(final_df[' ALI_IVA'], errors='coerce')
+
     # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
 
