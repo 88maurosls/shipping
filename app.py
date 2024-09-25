@@ -78,9 +78,11 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
         cod_fiscale = row[' COD_FISCALE']
         if pd.isna(cod_fiscale):
             continue  # Salta se COD_FISCALE è NaN o vuoto
-        cod_fiscale = str(cod_fiscale).strip()  # Assicurati che cod_fiscale sia una stringa
+        cod_fiscale = str(cod_fiscale).strip().upper()  # Converte in maiuscolo e rimuove spazi bianchi
         if cod_fiscale in no_cod_fiscale_list:
             df.at[index, ' COD_FISCALE'] = ""  # Svuota la cella se il valore è presente in no_cod_fiscale_list
+        else:
+            df.at[index, ' COD_FISCALE'] = cod_fiscale  # Aggiorna con il valore maiuscolo
     return df
 
 # Titolo dell'applicazione Streamlit
