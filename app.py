@@ -72,21 +72,6 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
-# Funzione per leggere il file dei paesi senza "COD_FISCALE"
-def load_countries_no_cod_fiscale(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            content = file.read()
-            # Rimuovi righe di commento e spazi bianchi inutili
-            content = content.replace("# Elenco dei paesi da controllare", "").replace("\n", "").replace(" ", "")
-            # Converti la stringa in una lista di paesi rimuovendo virgolette e split sui paesi
-            countries = content.replace('"', '').split(",")
-        return countries
-    except Exception as e:
-        st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
-        return []
-
-
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
@@ -103,9 +88,6 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Caricamento del file dei paesi senza "COD_FISCALE"
-    countries_no_cod_fiscale = load_countries_no_cod_fiscale('no_cod_fiscale.txt')
-
     # Creazione di un dizionario per il mappaggio nome maiuscolo -> nome originale
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
     name_mapping = {rag.upper(): rag for rag in all_rags}
@@ -120,6 +102,7 @@ if uploaded_file is not None:
         df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
+
 
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
@@ -141,13 +124,6 @@ if uploaded_file is not None:
                 final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
-
-    # Ultimo controllo sulla colonna "COD_FISCALE" per lasciare vuoto se presente nel file no_cod_fiscale.txt
-    for index, row in final_df.iterrows():
-        cod_fiscale = str(row[' COD_FISCALE']).strip()  # Rimuovi eventuali spazi
-        if cod_fiscale in countries_no_cod_fiscale:
-            final_df.at[index, ' COD_FISCALE'] = ""
-
 
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
     new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
