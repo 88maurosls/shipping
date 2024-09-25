@@ -92,9 +92,7 @@ st.title('Modifica File CSV per Costi di Spedizione e IVA')
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
-    # Aggiungi keep_default_na=False e na_filter=False per trattare i campi vuoti come stringhe vuote
-    df = pd.read_csv(uploaded_file, delimiter=';', dtype={' PARTITA_IVA': str, ' NUM_DOC': str, ' CAP': str, ' COD_CLI_XMAG': str, ' HSCODE': str, ' TELEFONO1': str, ' COD_CLI': str, ' TIPO_CF': str, ' MAIL': str},
-                     keep_default_na=False, na_filter=False)
+    df = pd.read_csv(uploaded_file, delimiter=';', dtype={' PARTITA_IVA': str, ' NUM_DOC': str, ' CAP': str, ' COD_CLI_XMAG': str, ' HSCODE': str, ' TELEFONO1': str, ' COD_CLI': str, ' TIPO_CF': str, ' MAIL': str})
 
     try:
         countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None)
@@ -160,22 +158,13 @@ if uploaded_file is not None:
     # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
 
-    # Esporta il CSV escludendo la colonna ' MAIL' dalla sostituzione di '.' con ','
-    csv = final_df.copy()
+    # Resto del codice per la generazione e il download del CSV
+    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
-    # Formatta solo le colonne che devono avere i punti sostituiti con virgole
-    for col in csv.columns:
-        if col != ' MAIL':  # Escludi la colonna ' MAIL' dalla sostituzione
-            csv[col] = csv[col].astype(str).str.replace('.', ',')
-
-    # Codifica in utf-8 e prepara il CSV da scaricare
-    csv_output = csv.to_csv(sep=';', index=False).encode('utf-8')
-
-    # Resto del codice per lo scaricamento
     st.write("Anteprima dei dati filtrati:", final_df)
     st.download_button(
         label="Scarica il CSV modificato",
-        data=io.BytesIO(csv_output),
+        data=io.BytesIO(csv),
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
     )
