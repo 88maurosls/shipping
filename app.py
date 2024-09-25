@@ -85,6 +85,14 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
             df.at[index, ' COD_FISCALE'] = cod_fiscale  # Mantieni il valore maiuscolo
     return df
 
+# Esporta il CSV mantenendo i punti nelle mail e sostituendo solo per i numeri
+def format_excluding_mail(df):
+    """Funzione per formattare le colonne escludendo la colonna MAIL"""
+    for col in df.columns:
+        if col != ' MAIL':  # Escludi la colonna MAIL
+            df[col] = df[col].astype(str).str.replace('.', ',')  # Sostituisci solo nelle altre colonne
+    return df
+
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
