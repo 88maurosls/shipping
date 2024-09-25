@@ -75,7 +75,10 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 # Funzione per la rimozione dei valori in "COD_FISCALE" basati su no_cod_fiscale.txt
 def remove_cod_fiscale(df, no_cod_fiscale_list):
     for index, row in df.iterrows():
-        cod_fiscale = row[' COD_FISCALE'].strip()
+        cod_fiscale = row[' COD_FISCALE']
+        if pd.isna(cod_fiscale):
+            continue  # Salta se COD_FISCALE è NaN o vuoto
+        cod_fiscale = str(cod_fiscale).strip()  # Assicurati che cod_fiscale sia una stringa
         if cod_fiscale in no_cod_fiscale_list:
             df.at[index, ' COD_FISCALE'] = ""  # Svuota la cella se il valore è presente in no_cod_fiscale_list
     return df
