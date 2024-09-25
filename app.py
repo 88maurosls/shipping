@@ -7,7 +7,7 @@ def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
     errors = []  # Lista per memorizzare gli errori
     for index, row in adjusted_rows.iterrows():
-        nazione = row[' NAZIONE'].strip()
+        nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             try:
@@ -92,12 +92,7 @@ st.title('Modifica File CSV per Costi di Spedizione e IVA')
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
-    # Aggiungi keep_default_na=False e na_filter=False per trattare i campi vuoti come stringhe vuote
-    df = pd.read_csv(uploaded_file, delimiter=';', dtype={' PARTITA_IVA': str, ' NUM_DOC': str, ' CAP': str, ' COD_CLI_XMAG': str, ' HSCODE': str, ' TELEFONO1': str, ' COD_CLI': str, ' TIPO_CF': str, ' MAIL': str},
-                     keep_default_na=False, na_filter=False)
-
-    # Rimuovi eventuali spazi nei nomi delle colonne
-    df.columns = df.columns.str.strip()
+    df = pd.read_csv(uploaded_file, delimiter=';', dtype={' PARTITA_IVA': str, ' NUM_DOC': str, ' CAP': str, ' COD_CLI_XMAG': str, ' HSCODE': str, ' TELEFONO1': str, ' COD_CLI': str, ' TIPO_CF': str, ' MAIL': str})
 
     try:
         countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None)
@@ -117,7 +112,7 @@ if uploaded_file is not None:
         no_cod_fiscale_list = []
 
     # Creazione di un dizionario per il mappaggio nome maiuscolo -> nome originale
-    all_rags = list(df['RAG_SOCIALE'].dropna().unique())
+    all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
     name_mapping = {rag.upper(): rag for rag in all_rags}
     sorted_keys = sorted(name_mapping.keys())  # Chiavi ordinate del dizionario
 
@@ -127,59 +122,49 @@ if uploaded_file is not None:
     # Applica il filtro utilizzando i nomi originali
     if selected_rags_upper:
         selected_rags = [name_mapping[rag] for rag in selected_rags_upper]
-        df = df[df['RAG_SOCIALE'].isin(selected_rags)]
+        df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
-    costs_rows = df[df['COSTI_SPEDIZIONE'] != 0]
-    unique_costs_rows = costs_rows.drop_duplicates(subset=['NUM_DOC'])
+    costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
+    unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
     # Rimuovi le righe con COD_ART uguale a 'SHIPPINGCOSTS0'
-    final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0']
+    final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
 
     for index, row in final_df.iterrows():
-        partita_iva_is_empty = pd.isna(row['PARTITA_IVA']) or (isinstance(row['PARTITA_IVA'], str) and not row['PARTITA_IVA'].strip())
-        if row['NAZIONE'] in countrycode_dict and partita_iva_is_empty:
-            iva_to_remove = countrycode_dict[row['NAZIONE']]
+        partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
+        if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
+            iva_to_remove = countrycode_dict[row[' NAZIONE']]
             try:
-                prezzo_con_iva = float(str(row['PREZZO_1']).replace(",", "."))
+                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
                 prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-                final_df.at[index, 'PREZZO_1'] = round(prezzo_senza_iva, 2)
+                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
     # Ordina e aggiorna i progressivi
-    final_df.sort_values(by=['NUM_DOC', 'PROGRESSIVO_RIGA'], inplace=True)
-    new_progressivo = (final_df.groupby(['NUM_DOC', 'PROGRESSIVO_RIGA']).ngroup() + 1)
-    final_df['PROGRESSIVO_RIGA'] = new_progressivo
+    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
+    new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
+    final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
     # Applica la funzione per rimuovere i valori da COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
 
-    # Elimina le righe "VAT" se "ALI_IVA" ha il valore 47
-    final_df['ALI_IVA'] = final_df['ALI_IVA'].astype(str).str.strip()  # Rimuovi eventuali spazi
-    final_df = final_df[~((final_df['ALI_IVA'] == '47') & (final_df['COD_ART'] == "VAT"))]
+    # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
+    final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
 
-    # Esporta il CSV escludendo la colonna 'MAIL' dalla sostituzione di '.' con ','
-    csv = final_df.copy()
+    # Resto del codice per la generazione e il download del CSV
+    csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
-    # Formatta solo le colonne che devono avere i punti sostituiti con virgole
-    for col in csv.columns:
-        if col != 'MAIL':  # Escludi la colonna 'MAIL' dalla sostituzione
-            csv[col] = csv[col].astype(str).str.replace('.', ',')
-
-    # Codifica in utf-8 e prepara il CSV da scaricare
-    csv_output = csv.to_csv(sep=';', index=False).encode('utf-8')
-
-    # Resto del codice per lo scaricamento
     st.write("Anteprima dei dati filtrati:", final_df)
     st.download_button(
         label="Scarica il CSV modificato",
-        data=io.BytesIO(csv_output),
+        data=io.BytesIO(csv),
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
     )
