@@ -147,10 +147,12 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    # Ordina e aggiorna i progressivi
-    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
-    new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
-    final_df[' PROGRESSIVO_RIGA'] = new_progressivo
+    # Ordina in modo che tutte le righe dello stesso ordine siano consecutive
+    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA', ' COD_ART'], inplace=True)
+    
+    # Aggiorna i progressivi riga in modo continuo e corretto all'interno di ogni NUM_DOC
+    final_df[' PROGRESSIVO_RIGA'] = final_df.groupby(' NUM_DOC').cumcount() + 1
+
 
     # Applica la funzione per rimuovere i valori da COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
