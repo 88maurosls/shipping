@@ -5,7 +5,7 @@ import io
 # Funzione per l'elaborazione delle righe delle spedizioni
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
-    errors = []  # Lista per memorizzare gli errori
+    errors = []
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
