@@ -149,9 +149,8 @@ if uploaded_file is not None:
     # Ordina il DataFrame per NUM_DOC e SEZIONALE in modo che le righe correlate siano vicine
     final_df.sort_values(by=[' NUM_DOC', ' SEZIONALE', ' PROGRESSIVO_RIGA'], inplace=True)
 
-    # Aggiorna i progressivi dopo l'ordinamento
-    new_progressivo = (final_df.groupby([' NUM_DOC', ' SEZIONALE']).cumcount() + 1)
-    final_df[' PROGRESSIVO_RIGA'] = new_progressivo
+    # Aggiorna i progressivi in modo univoco e sequenziale per ogni gruppo di NUM_DOC e SEZIONALE
+    final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC', ' SEZIONALE']).cumcount() + 1
 
     # Applica la funzione per rimuovere i valori da COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
