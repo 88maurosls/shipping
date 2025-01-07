@@ -105,7 +105,6 @@ if uploaded_file is not None:
     try:
         with open('no_cod_fiscale.txt', 'r') as f:
             no_cod_fiscale_content = f.read().strip()
-            # Assicurati che i nomi nel file siano tutti maiuscoli per il confronto
             no_cod_fiscale_list = [x.strip().upper() for x in no_cod_fiscale_content.split(';')]
     except Exception as e:
         st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
@@ -147,9 +146,11 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    # Ordina e aggiorna i progressivi
-    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
-    new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
+    # Ordina il DataFrame per NUM_DOC e SEZIONALE in modo che le righe correlate siano vicine
+    final_df.sort_values(by=[' NUM_DOC', ' SEZIONALE', ' PROGRESSIVO_RIGA'], inplace=True)
+
+    # Aggiorna i progressivi dopo l'ordinamento
+    new_progressivo = (final_df.groupby([' NUM_DOC', ' SEZIONALE']).cumcount() + 1)
     final_df[' PROGRESSIVO_RIGA'] = new_progressivo
 
     # Applica la funzione per rimuovere i valori da COD_FISCALE
