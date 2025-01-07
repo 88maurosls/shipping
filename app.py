@@ -105,7 +105,6 @@ if uploaded_file is not None:
     try:
         with open('no_cod_fiscale.txt', 'r') as f:
             no_cod_fiscale_content = f.read().strip()
-            # Assicurati che i nomi nel file siano tutti maiuscoli per il confronto
             no_cod_fiscale_list = [x.strip().upper() for x in no_cod_fiscale_content.split(';')]
     except Exception as e:
         st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
@@ -126,33 +125,23 @@ if uploaded_file is not None:
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
+    # Generazione delle righe aggiuntive
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
+
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
+    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df)
+
+    # Concatenazione delle righe originali con quelle aggiuntive
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
-    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Rimuovi le righe con COD_ART uguale a 'SHIPPINGCOSTS0'
+    # Rimuovi righe non valide, come SHIPPINGCOSTS0
     final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
 
-    for index, row in final_df.iterrows():
-        partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
-        if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
-            iva_to_remove = countrycode_dict[row[' NAZIONE']]
-            try:
-                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
-                prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
-            except Exception as e:
-                st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
-
-    # Ordina in modo che tutte le righe dello stesso ordine siano consecutive
+    # Ordina e aggiorna i progressivi
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA', ' COD_ART'], inplace=True)
-    
-    # Aggiorna i progressivi riga in modo continuo e corretto all'interno di ogni NUM_DOC
     final_df[' PROGRESSIVO_RIGA'] = final_df.groupby(' NUM_DOC').cumcount() + 1
-
 
     # Applica la funzione per rimuovere i valori da COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
