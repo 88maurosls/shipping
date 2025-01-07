@@ -107,6 +107,7 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
         no_cod_fiscale_list = []
 
+    # Raggruppa ordini
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
     name_mapping = {rag.upper(): rag for rag in all_rags}
     sorted_keys = sorted(name_mapping.keys())
@@ -125,18 +126,26 @@ if uploaded_file is not None:
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df)
 
+    # Unisci righe
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
-
-    # Ordina e mantieni i gruppi di NUM_DOC contigui
+    # Ordina mantenendo righe contigue per NUM_DOC
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
+
+    # Aggiorna progressivi
     final_df[' PROGRESSIVO_RIGA'] = final_df.groupby(' NUM_DOC').cumcount() + 1
 
+    # Rimuovi righe non valide
+    final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
+
+    # Applica rimozione COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
+
+    # Elimina le righe "VAT" non valide
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
 
+    # Esporta CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
     st.write("Anteprima dei dati filtrati:", final_df)
