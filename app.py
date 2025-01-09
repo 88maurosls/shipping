@@ -167,4 +167,4 @@ if uploaded_file is not None:
         data=io.BytesIO(csv),
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
-    ) 
+    )
