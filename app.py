@@ -36,6 +36,7 @@ def process_shipping_rows(rows, countrycode_dict):
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
+    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
@@ -47,26 +48,24 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        # Filtra solo le righe originali con NUM_DOC e SEZIONALE
+        # Filtra le righe relative al NUM_DOC e SEZIONALE
         related_rows = df_original[
             (df_original[' NUM_DOC'] == num_doc) &
-            (df_original[' SEZIONALE'] == sezionale) &
-            (df_original[' COD_ART'].str.startswith("SHIPPINGCOSTS") == False) &  # Escludi ShippingCosts
-            (df_original[' COD_ART'] != "VAT")  # Escludi VAT
+            (df_original[' SEZIONALE'] == sezionale)
         ]
 
-        # Debug: Verifica le righe rilevanti
-        st.write(f"Righe per NUM_DOC {num_doc}, SEZIONALE {sezionale}:")
+        # Debug: Verifica le righe utilizzate per il calcolo
+        st.write(f"Righe per NUM_DOC {num_doc} e SEZIONALE {sezionale}:")
         st.write(related_rows)
 
         try:
-            # Somma i prezzi rilevanti
+            # Somma il campo PREZZO_1 per calcolare l'IVA
             sum_prezzo = related_rows[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
         except Exception as e:
             st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc} e SEZIONALE {sezionale}: {e}")
             continue
 
-        # Calcola il VAT
+        # Calcola il costo IVA
         costo_iva = sum_prezzo * iva / 100
         formatted_vat = round(costo_iva, 2)
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
@@ -78,6 +77,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 
 # Funzione per la rimozione dei valori in "COD_FISCALE"
