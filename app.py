@@ -51,9 +51,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             continue
 
         # Filtra le righe correlate per NUM_DOC
-        related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
-        related_rows = related_rows[related_rows[' COD_ART'] != 'VAT']  # Escludi eventuali righe VAT già presenti
-
+        related_rows = df_original[(df_original[' NUM_DOC'] == num_doc) & (df_original[' COD_ART'] != "VAT")]
         try:
             # Calcola la somma corretta dei prezzi (PREZZO_1)
             sum_prezzo = related_rows[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
@@ -75,20 +73,6 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
-
-# Funzione per la rimozione dei valori in "COD_FISCALE" basati su no_cod_fiscale.txt
-def remove_cod_fiscale(df, no_cod_fiscale_list):
-    for index, row in df.iterrows():
-        cod_fiscale = row[' COD_FISCALE']
-        if pd.isna(cod_fiscale):
-            continue  # Salta se COD_FISCALE è NaN o vuoto
-        cod_fiscale = str(cod_fiscale).strip().upper()  # Converte in maiuscolo per il confronto
-        if cod_fiscale in no_cod_fiscale_list:
-            df.at[index, ' COD_FISCALE'] = ""  # Svuota la cella se il valore è presente in no_cod_fiscale_list
-        else:
-            df.at[index, ' COD_FISCALE'] = cod_fiscale  # Mantieni il valore maiuscolo
-    return df
-
 # Titolo dell'applicazione Streamlit
 st.title('Modifica File CSV per Costi di Spedizione e IVA')
 
@@ -105,28 +89,17 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Leggi il file no_cod_fiscale.txt
-    try:
-        with open('no_cod_fiscale.txt', 'r') as f:
-            no_cod_fiscale_content = f.read().strip()
-            no_cod_fiscale_list = [x.strip().upper() for x in no_cod_fiscale_content.split(';')]
-    except Exception as e:
-        st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
-        no_cod_fiscale_list = []
-
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
-    unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
-    adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
+    adjusted_rows = process_shipping_rows(costs_rows, countrycode_dict)
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
-    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
+    vat_rows = process_vat_rows(df_with_shipping, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Ordina e aggiorna i progressivi
+    # Ordina il DataFrame per NUM_DOC e SEZIONALE
     final_df.sort_values(by=[' NUM_DOC', ' SEZIONALE'], inplace=True)
-    final_df[' PROGRESSIVO_RIGA'] = range(1, len(final_df) + 1)
 
-    # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
-    final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
+    # Genera una numerazione progressiva globale
+    final_df[' PROGRESSIVO_RIGA'] = range(1, len(final_df) + 1)
 
     # Resto del codice per la generazione e il download del CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
