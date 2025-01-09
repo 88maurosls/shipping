@@ -11,7 +11,6 @@ def process_shipping_rows(rows, countrycode_dict):
         if nazione in countrycode_dict:
             iva = countrycode_dict[nazione]
             try:
-                # Rimuovi spazi bianchi, sostituisci virgole con punti e converti a float
                 costo_spedizione = float(row[' COSTI_SPEDIZIONE'].strip().replace(',', '.'))
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
                 formatted_price = round(costo_senza_iva, 2)
@@ -23,7 +22,6 @@ def process_shipping_rows(rows, countrycode_dict):
         else:
             adjusted_rows.at[index, ' PREZZO_1'] = row[' COSTI_SPEDIZIONE']
 
-    # Stampa gli errori
     for error in errors:
         st.error(error)
 
@@ -33,7 +31,7 @@ def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
     adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
     adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
-    adjusted_rows[' HSCODE'] = ""  # Lascia vuota la colonna HSCODE
+    adjusted_rows[' HSCODE'] = ""
     return adjusted_rows
 
 # Funzione per l'elaborazione delle righe dell'IVA
@@ -72,17 +70,17 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
-# Funzione per la rimozione dei valori in "COD_FISCALE" basati su no_cod_fiscale.txt
+# Funzione per la rimozione dei valori in "COD_FISCALE"
 def remove_cod_fiscale(df, no_cod_fiscale_list):
     for index, row in df.iterrows():
         cod_fiscale = row[' COD_FISCALE']
         if pd.isna(cod_fiscale):
-            continue  # Salta se COD_FISCALE è NaN o vuoto
-        cod_fiscale = str(cod_fiscale).strip().upper()  # Converte in maiuscolo per il confronto
+            continue
+        cod_fiscale = str(cod_fiscale).strip().upper()
         if cod_fiscale in no_cod_fiscale_list:
-            df.at[index, ' COD_FISCALE'] = ""  # Svuota la cella se il valore è presente in no_cod_fiscale_list
+            df.at[index, ' COD_FISCALE'] = ""
         else:
-            df.at[index, ' COD_FISCALE'] = cod_fiscale  # Mantieni il valore maiuscolo
+            df.at[index, ' COD_FISCALE'] = cod_fiscale
     return df
 
 # Titolo dell'applicazione Streamlit
@@ -101,39 +99,32 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
 
-    # Leggi il file no_cod_fiscale.txt
     try:
         with open('no_cod_fiscale.txt', 'r') as f:
             no_cod_fiscale_content = f.read().strip()
-            # Assicurati che i nomi nel file siano tutti maiuscoli per il confronto
             no_cod_fiscale_list = [x.strip().upper() for x in no_cod_fiscale_content.split(';')]
     except Exception as e:
         st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
         no_cod_fiscale_list = []
 
-    # Creazione di un dizionario per il mappaggio nome maiuscolo -> nome originale
     all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
     name_mapping = {rag.upper(): rag for rag in all_rags}
-    sorted_keys = sorted(name_mapping.keys())  # Chiavi ordinate del dizionario
+    sorted_keys = sorted(name_mapping.keys())
 
-    # Creazione di checkbox per selezionare più "RAG_SOCIALE"
     selected_rags_upper = [key for key in sorted_keys if st.checkbox(key, key=key)]
 
-    # Applica il filtro utilizzando i nomi originali
     if selected_rags_upper:
         selected_rags = [name_mapping[rag] for rag in selected_rags_upper]
         df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
     else:
         st.warning("Nessuna selezione effettuata. Verranno processati tutti i clienti.")
 
-    costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
-    unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
-    adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
+    costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0].drop_duplicates(subset=[' NUM_DOC'])
+    adjusted_rows = process_shipping_rows(costs_rows, countrycode_dict)
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
-    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
+    vat_rows = process_vat_rows(costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Rimuovi le righe con COD_ART uguale a 'SHIPPINGCOSTS0'
     final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
 
     for index, row in final_df.iterrows():
@@ -147,17 +138,12 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    # Ordina e aggiorna i progressivi
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
     final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC']).cumcount() + 1
 
-    # Applica la funzione per rimuovere i valori da COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
-
-    # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
 
-    # Resto del codice per la generazione e il download del CSV
     csv = final_df.to_csv(sep=';', index=False, float_format='%.2f').encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
 
     st.write("Anteprima dei dati filtrati:", final_df)
