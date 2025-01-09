@@ -124,7 +124,7 @@ if uploaded_file is not None:
         selected_rags = [name_mapping[rag] for rag in selected_rags_upper]
         df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
     else:
-        st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
+        st.warning("Nessuna selezione effettuata. Verranno processati tutti i clienti.")
 
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
@@ -149,8 +149,7 @@ if uploaded_file is not None:
 
     # Ordina e aggiorna i progressivi
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
-    new_progressivo = (final_df.groupby([' NUM_DOC', ' PROGRESSIVO_RIGA']).ngroup() + 1)
-    final_df[' PROGRESSIVO_RIGA'] = new_progressivo
+    final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC']).cumcount() + 1
 
     # Applica la funzione per rimuovere i valori da COD_FISCALE
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
@@ -167,4 +166,4 @@ if uploaded_file is not None:
         data=io.BytesIO(csv),
         file_name='modified_CLIARTFATT.csv',
         mime='text/csv',
-    ) 
+    )
