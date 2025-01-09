@@ -37,6 +37,7 @@ def process_shipping_rows(rows, countrycode_dict):
     return adjusted_rows
 
 # Funzione per l'elaborazione delle righe dell'IVA
+# Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
     vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]
@@ -44,19 +45,22 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 
     for index, row in vat_rows.iterrows():
         num_doc = row[' NUM_DOC']
+        sezionale = row[' SEZIONALE']
         iva = countrycode_dict.get(row[' NAZIONE'], 0)
 
         if not isinstance(iva, (int, float)):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
+        # Filtra le righe correlate utilizzando NUM_DOC e SEZIONALE
+        related_rows = df_original[(df_original[' NUM_DOC'] == num_doc) & (df_original[' SEZIONALE'] == sezionale)]
         related_rows_unique = related_rows.drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
 
         try:
+            # Somma i valori di PREZZO_1 delle righe correlate
             sum_prezzo = related_rows_unique[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
         except Exception as e:
-            st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc}: {e}")
+            st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc} e SEZIONALE {sezionale}: {e}")
             continue
 
         costo_iva = sum_prezzo * iva / 100
@@ -71,6 +75,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 # Funzione per la rimozione dei valori in "COD_FISCALE" basati su no_cod_fiscale.txt
 def remove_cod_fiscale(df, no_cod_fiscale_list):
