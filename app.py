@@ -48,15 +48,11 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        # Filtra le righe relative al NUM_DOC e SEZIONALE
+        # Filtra le righe relative a NUM_DOC e SEZIONALE
         related_rows = df_original[
             (df_original[' NUM_DOC'] == num_doc) &
             (df_original[' SEZIONALE'] == sezionale)
         ]
-
-        # Debug: Verifica le righe utilizzate per il calcolo
-        st.write(f"Righe per NUM_DOC {num_doc} e SEZIONALE {sezionale}:")
-        st.write(related_rows)
 
         try:
             # Somma il campo PREZZO_1 per calcolare l'IVA
@@ -77,6 +73,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 
 
