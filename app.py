@@ -36,7 +36,6 @@ def process_shipping_rows(rows, countrycode_dict):
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
-    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
@@ -73,9 +72,6 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
     vat_rows[' HSCODE'] = ""
     return vat_rows
-
-
-
 
 # Funzione per la rimozione dei valori in "COD_FISCALE"
 def remove_cod_fiscale(df, no_cod_fiscale_list):
@@ -145,7 +141,8 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    final_df.sort_values(by=[' NUM_DOC', ' SEZIONALE'], inplace=True)
+    # Calcolo finale dei progressivi tenendo conto di NUM_DOC e SEZIONALE
+    final_df.sort_values(by=[' NUM_DOC', ' SEZIONALE', ' PROGRESSIVO_RIGA'], inplace=True)
     final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC', ' SEZIONALE']).cumcount() + 1
 
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
