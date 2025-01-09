@@ -110,21 +110,6 @@ if uploaded_file is not None:
         st.error(f"Errore nella lettura di no_cod_fiscale.txt: {e}")
         no_cod_fiscale_list = []
 
-    # Creazione di un dizionario per il mappaggio nome maiuscolo -> nome originale
-    all_rags = list(df[' RAG_SOCIALE'].dropna().unique())
-    name_mapping = {rag.upper(): rag for rag in all_rags}
-    sorted_keys = sorted(name_mapping.keys())  # Chiavi ordinate del dizionario
-
-    # Creazione di checkbox per selezionare più "RAG_SOCIALE"
-    selected_rags_upper = [key for key in sorted_keys if st.checkbox(key, key=key)]
-
-    # Applica il filtro utilizzando i nomi originali
-    if selected_rags_upper:
-        selected_rags = [name_mapping[rag] for rag in selected_rags_upper]
-        df = df[df[' RAG_SOCIALE'].isin(selected_rags)]
-    else:
-        st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
-
     costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=[' NUM_DOC'])
     adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
@@ -132,28 +117,9 @@ if uploaded_file is not None:
     vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Rimuovi le righe con COD_ART uguale a 'SHIPPINGCOSTS0'
-    final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
-
-    for index, row in final_df.iterrows():
-        partita_iva_is_empty = pd.isna(row[' PARTITA_IVA']) or (isinstance(row[' PARTITA_IVA'], str) and not row[' PARTITA_IVA'].strip())
-        if row[' NAZIONE'] in countrycode_dict and partita_iva_is_empty:
-            iva_to_remove = countrycode_dict[row[' NAZIONE']]
-            try:
-                prezzo_con_iva = float(str(row[' PREZZO_1']).replace(",", "."))
-                prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-                final_df.at[index, ' PREZZO_1'] = round(prezzo_senza_iva, 2)
-            except Exception as e:
-                st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
-
-    # Ordina il DataFrame per NUM_DOC e SEZIONALE in modo che le righe correlate siano vicine
+    # Ordina e aggiorna i progressivi
     final_df.sort_values(by=[' NUM_DOC', ' SEZIONALE'], inplace=True)
-
-    # Calcola una numerazione progressiva globale
     final_df[' PROGRESSIVO_RIGA'] = range(1, len(final_df) + 1)
-
-    # Applica la funzione per rimuovere i valori da COD_FISCALE
-    final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
 
     # Elimina le righe "VAT" se "ALI_IVA" ha il valore "47"
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
