@@ -51,16 +51,22 @@ def process_vat_rows(rows, countrycode_dict, df_original):
         related_rows = df_original[
             (df_original[' NUM_DOC'] == num_doc) &
             (df_original[' SEZIONALE'] == sezionale) &
-            (df_original[' COD_ART'] != "VAT")
+            (df_original[' COD_ART'].str.startswith("SHIPPINGCOSTS") == False) &  # Escludi ShippingCosts
+            (df_original[' COD_ART'] != "VAT")  # Escludi VAT
         ]
-        related_rows_unique = related_rows.drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
+
+        # Debug: Verifica le righe rilevanti
+        st.write(f"Righe per NUM_DOC {num_doc}, SEZIONALE {sezionale}:")
+        st.write(related_rows)
 
         try:
-            sum_prezzo = related_rows_unique[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
+            # Somma i prezzi rilevanti
+            sum_prezzo = related_rows[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
         except Exception as e:
             st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc} e SEZIONALE {sezionale}: {e}")
             continue
 
+        # Calcola il VAT
         costo_iva = sum_prezzo * iva / 100
         formatted_vat = round(costo_iva, 2)
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
@@ -72,6 +78,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 # Funzione per la rimozione dei valori in "COD_FISCALE"
 def remove_cod_fiscale(df, no_cod_fiscale_list):
