@@ -50,15 +50,18 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
+        # Filtra le righe correlate per NUM_DOC
         related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
-        related_rows_unique = related_rows.drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
+        related_rows = related_rows[related_rows[' COD_ART'] != 'VAT']  # Escludi eventuali righe VAT già presenti
 
         try:
-            sum_prezzo = related_rows_unique[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
+            # Calcola la somma corretta dei prezzi (PREZZO_1)
+            sum_prezzo = related_rows[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
         except Exception as e:
             st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc}: {e}")
             continue
 
+        # Calcola l'importo IVA
         costo_iva = sum_prezzo * iva / 100
         formatted_vat = round(costo_iva, 2)
         vat_rows.at[index, ' PREZZO_1'] = formatted_vat
@@ -71,6 +74,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
     vat_rows[' HSCODE'] = ""
     return vat_rows
+
 
 # Funzione per la rimozione dei valori in "COD_FISCALE" basati su no_cod_fiscale.txt
 def remove_cod_fiscale(df, no_cod_fiscale_list):
