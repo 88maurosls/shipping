@@ -36,22 +36,29 @@ def process_shipping_rows(rows, countrycode_dict):
 # Funzione per l'elaborazione delle righe dell'IVA
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
-    vat_rows = vat_rows[vat_rows[' NAZIONE'].astype(str) != "86"]
     vat_rows = vat_rows[vat_rows[' NAZIONE'].isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
         num_doc = row[' NUM_DOC']
+        sezionale = row[' SEZIONALE']
         iva = countrycode_dict.get(row[' NAZIONE'], 0)
 
         if not isinstance(iva, (int, float)):
             st.error(f"IVA non valida per la nazione {row[' NAZIONE']}: {iva}")
             continue
 
-        related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
+        # Filtra solo le righe originali con NUM_DOC e SEZIONALE
+        related_rows = df_original[
+            (df_original[' NUM_DOC'] == num_doc) &
+            (df_original[' SEZIONALE'] == sezionale) &
+            (df_original[' COD_ART'] != "VAT")
+        ]
+        related_rows_unique = related_rows.drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
+
         try:
-            sum_prezzo = related_rows[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
+            sum_prezzo = related_rows_unique[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
         except Exception as e:
-            st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc}: {e}")
+            st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc} e SEZIONALE {sezionale}: {e}")
             continue
 
         costo_iva = sum_prezzo * iva / 100
@@ -86,7 +93,7 @@ st.title('Modifica File CSV per Costi di Spedizione e IVA')
 uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file, delimiter=';', dtype={' PARTITA_IVA': str, ' NUM_DOC': str, ' CAP': str, ' COD_CLI_XMAG': str, ' HSCODE': str, ' TELEFONO1': str, ' COD_CLI': str, ' TIPO_CF': str, ' MAIL': str})
+    df = pd.read_csv(uploaded_file, delimiter=';', dtype={' PARTITA_IVA': str, ' NUM_DOC': str, ' SEZIONALE': str, ' CAP': str, ' COD_CLI_XMAG': str, ' HSCODE': str, ' TELEFONO1': str, ' COD_CLI': str, ' TIPO_CF': str, ' MAIL': str})
 
     try:
         countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None)
@@ -115,10 +122,10 @@ if uploaded_file is not None:
     else:
         st.warning("Nessuna selezione effettuata. Verranno processati tutti i clienti.")
 
-    costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0].drop_duplicates(subset=[' NUM_DOC'])
+    costs_rows = df[df[' COSTI_SPEDIZIONE'] != 0].drop_duplicates(subset=[' NUM_DOC', ' SEZIONALE'])
     adjusted_rows = process_shipping_rows(costs_rows, countrycode_dict)
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
-    vat_rows = process_vat_rows(costs_rows, countrycode_dict, df_with_shipping)
+    vat_rows = process_vat_rows(costs_rows, countrycode_dict, df)
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
     final_df = final_df[final_df[' COD_ART'] != 'SHIPPINGCOSTS0']
@@ -134,9 +141,8 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
-    # Calcolo finale dei progressivi
-    final_df.sort_values(by=[' NUM_DOC'], inplace=True)
-    final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC']).cumcount() + 1
+    final_df.sort_values(by=[' NUM_DOC', ' SEZIONALE'], inplace=True)
+    final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC', ' SEZIONALE']).cumcount() + 1
 
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
     final_df = final_df[~((final_df[' ALI_IVA'] == 47) & (final_df[' COD_ART'] == "VAT"))]
