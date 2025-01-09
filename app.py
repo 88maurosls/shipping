@@ -5,7 +5,7 @@ import io
 # Funzione per l'elaborazione delle righe delle spedizioni
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
-    errors = []  # Lista per memorizzare gli errori
+    errors = []
     for index, row in adjusted_rows.iterrows():
         nazione = row[' NAZIONE']
         if nazione in countrycode_dict:
@@ -30,7 +30,6 @@ def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows[' DESCR_ART'] = "Shipping Costs"
     adjusted_rows[' DESCR_ART_ESTESA'] = "Shipping Costs"
     adjusted_rows[' DESCRIZIONE_RIGA'] = "Shipping Costs"
-    adjusted_rows[' PROGRESSIVO_RIGA'] = adjusted_rows[' PROGRESSIVO_RIGA'].astype(str) + "-2"
     adjusted_rows[' HSCODE'] = ""
     return adjusted_rows
 
@@ -66,7 +65,6 @@ def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows[' DESCR_ART'] = "VAT"
     vat_rows[' DESCR_ART_ESTESA'] = "VAT"
     vat_rows[' DESCRIZIONE_RIGA'] = "VAT"
-    vat_rows[' PROGRESSIVO_RIGA'] = vat_rows[' PROGRESSIVO_RIGA'].astype(str) + "-3"
     vat_rows[' HSCODE'] = ""
     return vat_rows
 
@@ -138,6 +136,7 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
+    # Calcolo finale dei progressivi
     final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
     final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC']).cumcount() + 1
 
