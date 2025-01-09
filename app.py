@@ -48,10 +48,8 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             continue
 
         related_rows = df_original[df_original[' NUM_DOC'] == num_doc]
-        related_rows_unique = related_rows.drop_duplicates(subset=[' PROGRESSIVO_RIGA'])
-
         try:
-            sum_prezzo = related_rows_unique[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
+            sum_prezzo = related_rows[' PREZZO_1'].astype(str).str.replace(",", ".").astype(float).sum()
         except Exception as e:
             st.error(f"Errore nella conversione o nella somma di 'PREZZO_1' per NUM_DOC {num_doc}: {e}")
             continue
@@ -137,7 +135,7 @@ if uploaded_file is not None:
                 st.error(f"Errore nella rimozione dell'IVA da 'PREZZO_1' per la riga {index}: {e}")
 
     # Calcolo finale dei progressivi
-    final_df.sort_values(by=[' NUM_DOC', ' PROGRESSIVO_RIGA'], inplace=True)
+    final_df.sort_values(by=[' NUM_DOC'], inplace=True)
     final_df[' PROGRESSIVO_RIGA'] = final_df.groupby([' NUM_DOC']).cumcount() + 1
 
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
