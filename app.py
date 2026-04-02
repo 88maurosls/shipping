@@ -147,12 +147,19 @@ if uploaded_file is not None:
         st.stop()
 
     try:
-        countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None, dtype=str)
-        countrycode_df.columns = countrycode_df.columns.map(str)
-        countrycode_df = countrycode_df.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
-        countrycode_df[0] = countrycode_df[0].astype(str).str.strip()
-        countrycode_df[2] = countrycode_df[2].astype(str).str.strip().str.replace(',', '.', regex=False).astype(float)
-        countrycode_dict = dict(zip(countrycode_df[0], countrycode_df[2]))
+        countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None, dtype=str, keep_default_na=False)
+    
+        countrycode_df = countrycode_df.apply(
+            lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x)
+        )
+    
+        countrycode_dict = dict(
+            zip(
+                countrycode_df.iloc[:, 0].astype(str).str.strip(),
+                countrycode_df.iloc[:, 2].astype(str).str.strip().str.replace(',', '.', regex=False).astype(float)
+            )
+        )
+    
     except Exception as e:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
