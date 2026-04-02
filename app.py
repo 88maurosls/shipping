@@ -207,7 +207,7 @@ if uploaded_file is not None:
             try:
                 prezzo_con_iva = safe_float(row.get('PREZZO_1', ''))
                 prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-                final_df.at[index, 'PREZZO_1'] = round(prezzo_senza_iva, 2)
+                final_df.at[index, 'PREZZO_1'] = f"{round(prezzo_senza_iva, 2):.2f}".replace('.', ',')
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da PREZZO_1 per la riga {index}: {e}")
 
