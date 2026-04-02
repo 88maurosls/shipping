@@ -145,22 +145,30 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
 def format_output_columns(final_df):
     final_df = final_df.copy()
 
+    # Mantieni PREZZO_1 originale per tutte le righe normali.
+    # Formatta solo le righe generate dal programma.
     if 'PREZZO_1' in final_df.columns:
-        final_df['PREZZO_1'] = final_df.apply(
-            lambda row: format_number(row['PREZZO_1'], 2)
-            if safe_str(row.get('COD_ART', '')) in ['VAT'] or safe_str(row.get('DESCR_ART', '')) == 'Shipping Costs'
-            else format_number(row['PREZZO_1'], 3),
-            axis=1
-        )
+        def format_prezzo_row(row):
+            cod_art = safe_str(row.get('COD_ART', ''))
+            descr_art = safe_str(row.get('DESCR_ART', ''))
 
+            if cod_art == 'VAT' or descr_art == 'Shipping Costs':
+                return format_number(row.get('PREZZO_1', ''), 2)
+
+            # Righe originali: non toccare il formato
+            return safe_str(row.get('PREZZO_1', ''))
+
+        final_df['PREZZO_1'] = final_df.apply(format_prezzo_row, axis=1)
+
+    # Queste invece puoi continuare a normalizzarle a 2 decimali
     if 'COSTI_SPEDIZIONE' in final_df.columns:
         final_df['COSTI_SPEDIZIONE'] = final_df['COSTI_SPEDIZIONE'].apply(
-            lambda x: "" if safe_str(x) == "" else format_number(safe_float(x), 2)
+            lambda x: "" if safe_str(x) == "" else format_number(x, 2)
         )
 
     if 'EXSTRASCONTO' in final_df.columns:
         final_df['EXSTRASCONTO'] = final_df['EXSTRASCONTO'].apply(
-            lambda x: "" if safe_str(x) == "" else format_number(safe_float(x), 2)
+            lambda x: "" if safe_str(x) == "" else format_number(x, 2)
         )
 
     return final_df
