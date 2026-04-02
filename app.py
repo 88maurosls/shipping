@@ -22,10 +22,11 @@ def safe_float(value):
         return 0.0
 
 def format_number(value, decimals=2):
-    try:
-        return f"{float(value):.{decimals}f}".replace(".", ",")
-    except Exception:
+    s = safe_str(value)
+    if s == "":
         return ""
+    val = safe_float(value)
+    return f"{val:.{decimals}f}".replace(".", ",")
 
 def clean_dataframe(df):
     df = df.copy()
