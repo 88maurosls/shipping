@@ -42,13 +42,13 @@ def process_shipping_rows(rows, countrycode_dict):
                 costo_spedizione = safe_float(row.get('COSTI_SPEDIZIONE', ''))
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
                 formatted_price = round(costo_senza_iva, 2)
-                adjusted_rows.at[index, 'PREZZO_1'] = formatted_price
+                adjusted_rows.at[index, 'PREZZO_1'] = f"{formatted_price:.2f}".replace('.', ',')
             except Exception as e:
                 errors.append(
                     f"Errore nella riga {index + 1}: {safe_str(row.get('COSTI_SPEDIZIONE', ''))} - {e}"
                 )
         else:
-            adjusted_rows.at[index, 'PREZZO_1'] = safe_float(row.get('COSTI_SPEDIZIONE', ''))
+            adjusted_rows.at[index, 'PREZZO_1'] = f"{safe_float(row.get('COSTI_SPEDIZIONE', '')):.2f}".replace('.', ',')
 
     for error in errors:
         st.error(error)
@@ -148,8 +148,10 @@ if uploaded_file is not None:
 
     try:
         countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None, dtype=str)
-        countrycode_df = clean_dataframe(countrycode_df)
-        countrycode_df[2] = countrycode_df[2].apply(safe_float)
+        countrycode_df.columns = countrycode_df.columns.map(str)
+        countrycode_df = countrycode_df.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
+        countrycode_df[0] = countrycode_df[0].astype(str).str.strip()
+        countrycode_df[2] = countrycode_df[2].astype(str).str.strip().str.replace(',', '.', regex=False).astype(float)
         countrycode_dict = dict(zip(countrycode_df[0], countrycode_df[2]))
     except Exception as e:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
