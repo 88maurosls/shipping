@@ -21,14 +21,22 @@ def safe_float(value):
     except ValueError:
         return 0.0
 
-# Funzione per pulire tutto il DataFrame
+def format_number(value, decimals=2):
+    try:
+        return f"{float(value):.{decimals}f}".replace(".", ",")
+    except Exception:
+        return ""
+
 def clean_dataframe(df):
     df = df.copy()
     df.columns = df.columns.str.strip()
     df = df.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
     return df
 
+# ---------------------------
 # Funzione per l'elaborazione delle righe delle spedizioni
+# ---------------------------
+
 def process_shipping_rows(rows, countrycode_dict):
     adjusted_rows = rows.copy()
     errors = []
@@ -41,14 +49,15 @@ def process_shipping_rows(rows, countrycode_dict):
             try:
                 costo_spedizione = safe_float(row.get('COSTI_SPEDIZIONE', ''))
                 costo_senza_iva = costo_spedizione / (1 + iva / 100)
-                formatted_price = round(costo_senza_iva, 2)
-                adjusted_rows.at[index, 'PREZZO_1'] = f"{formatted_price:.2f}".replace('.', ',')
+                adjusted_rows.at[index, 'PREZZO_1'] = format_number(costo_senza_iva, 2)
             except Exception as e:
                 errors.append(
                     f"Errore nella riga {index + 1}: {safe_str(row.get('COSTI_SPEDIZIONE', ''))} - {e}"
                 )
         else:
-            adjusted_rows.at[index, 'PREZZO_1'] = f"{safe_float(row.get('COSTI_SPEDIZIONE', '')):.2f}".replace('.', ',')
+            adjusted_rows.at[index, 'PREZZO_1'] = format_number(
+                safe_float(row.get('COSTI_SPEDIZIONE', '')), 2
+            )
 
     for error in errors:
         st.error(error)
@@ -65,7 +74,10 @@ def process_shipping_rows(rows, countrycode_dict):
 
     return adjusted_rows
 
+# ---------------------------
 # Funzione per l'elaborazione delle righe dell'IVA
+# ---------------------------
+
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
 
@@ -97,8 +109,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             continue
 
         costo_iva = sum_prezzo * iva / 100
-        formatted_vat = round(costo_iva, 2)
-        vat_rows.at[index, 'PREZZO_1'] = f"{formatted_vat:.2f}".replace('.', ',')
+        vat_rows.at[index, 'PREZZO_1'] = format_number(costo_iva, 2)
 
     vat_rows['COD_ART'] = "VAT"
     vat_rows['COD_ART_DOC'] = vat_rows['COD_ART']
@@ -110,7 +121,10 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 
     return vat_rows
 
-# Funzione per la rimozione dei valori in COD_FISCALE basati su no_cod_fiscale.txt
+# ---------------------------
+# Funzione per la rimozione dei valori in COD_FISCALE
+# ---------------------------
+
 def remove_cod_fiscale(df, no_cod_fiscale_list):
     for index, row in df.iterrows():
         cod_fiscale = row.get('COD_FISCALE', '')
@@ -124,6 +138,33 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
     return df
 
 # ---------------------------
+# Formattazione finale colonne
+# ---------------------------
+
+def format_output_columns(final_df):
+    final_df = final_df.copy()
+
+    if 'PREZZO_1' in final_df.columns:
+        final_df['PREZZO_1'] = final_df.apply(
+            lambda row: format_number(row['PREZZO_1'], 2)
+            if safe_str(row.get('COD_ART', '')) in ['VAT'] or safe_str(row.get('DESCR_ART', '')) == 'Shipping Costs'
+            else format_number(row['PREZZO_1'], 3),
+            axis=1
+        )
+
+    if 'COSTI_SPEDIZIONE' in final_df.columns:
+        final_df['COSTI_SPEDIZIONE'] = final_df['COSTI_SPEDIZIONE'].apply(
+            lambda x: "" if safe_str(x) == "" else format_number(safe_float(x), 2)
+        )
+
+    if 'EXSTRASCONTO' in final_df.columns:
+        final_df['EXSTRASCONTO'] = final_df['EXSTRASCONTO'].apply(
+            lambda x: "" if safe_str(x) == "" else format_number(safe_float(x), 2)
+        )
+
+    return final_df
+
+# ---------------------------
 # App Streamlit
 # ---------------------------
 
@@ -133,7 +174,6 @@ uploaded_file = st.file_uploader("Carica il file CSV", type='csv')
 
 if uploaded_file is not None:
     try:
-        # Legge tutto come stringa per evitare dtype ballerini
         df = pd.read_csv(
             uploaded_file,
             delimiter=';',
@@ -147,19 +187,25 @@ if uploaded_file is not None:
         st.stop()
 
     try:
-        countrycode_df = pd.read_csv('countrycode.txt', delimiter=';', header=None, dtype=str, keep_default_na=False)
-    
+        countrycode_df = pd.read_csv(
+            'countrycode.txt',
+            delimiter=';',
+            header=None,
+            dtype=str,
+            keep_default_na=False
+        )
+
         countrycode_df = countrycode_df.apply(
             lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x)
         )
-    
+
         countrycode_dict = dict(
             zip(
                 countrycode_df.iloc[:, 0].astype(str).str.strip(),
                 countrycode_df.iloc[:, 2].astype(str).str.strip().str.replace(',', '.', regex=False).astype(float)
             )
         )
-    
+
     except Exception as e:
         st.error(f"Errore nella lettura di countrycode.txt: {e}")
         countrycode_dict = {}
@@ -184,7 +230,6 @@ if uploaded_file is not None:
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
-    # Tiene solo le righe con costo spedizione > 0
     costs_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0]
     unique_costs_rows = costs_rows.drop_duplicates(subset=['NUM_DOC'])
 
@@ -207,7 +252,17 @@ if uploaded_file is not None:
             try:
                 prezzo_con_iva = safe_float(row.get('PREZZO_1', ''))
                 prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
-                final_df.at[index, 'PREZZO_1'] = f"{round(prezzo_senza_iva, 2):.2f}".replace('.', ',')
+
+                is_shipping_or_vat = (
+                    safe_str(row.get('COD_ART', '')) == 'VAT' or
+                    safe_str(row.get('DESCR_ART', '')) == 'Shipping Costs'
+                )
+
+                final_df.at[index, 'PREZZO_1'] = format_number(
+                    prezzo_senza_iva,
+                    2 if is_shipping_or_vat else 3
+                )
+
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da PREZZO_1 per la riga {index}: {e}")
 
@@ -218,14 +273,14 @@ if uploaded_file is not None:
 
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
 
-    # Se ALI_IVA è stringa, confronta con "47"
     final_df = final_df[~((final_df['ALI_IVA'].astype(str) == "47") & (final_df['COD_ART'] == "VAT"))]
+
+    final_df = format_output_columns(final_df)
 
     csv = final_df.to_csv(
         sep=';',
-        index=False,
-        float_format='%.2f'
-    ).encode('utf-8').decode('utf-8').replace('.', ',').encode('utf-8')
+        index=False
+    ).encode('utf-8')
 
     st.write("Anteprima dei dati filtrati:", final_df)
 
