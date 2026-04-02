@@ -98,7 +98,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 
         costo_iva = sum_prezzo * iva / 100
         formatted_vat = round(costo_iva, 2)
-        vat_rows.at[index, 'PREZZO_1'] = formatted_vat
+        vat_rows.at[index, 'PREZZO_1'] = f"{formatted_vat:.2f}".replace('.', ',')
 
     vat_rows['COD_ART'] = "VAT"
     vat_rows['COD_ART_DOC'] = vat_rows['COD_ART']
