@@ -82,8 +82,9 @@ def process_shipping_rows(rows, countrycode_dict):
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
 
+    # Escludi nazione 86 e tieni solo nazioni presenti nel file countrycode
     vat_rows = vat_rows[vat_rows['NAZIONE'].astype(str) != "86"]
-    vat_rows = vat_rows[vat_rows['NAZIONE'].isin(countrycode_dict.keys())]
+    vat_rows = vat_rows[vat_rows['NAZIONE'].astype(str).isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
         num_doc = safe_str(row.get('NUM_DOC', ''))
@@ -98,7 +99,14 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             (df_original['NUM_DOC'].astype(str) == num_doc) &
             (df_original['SEZIONALE'].astype(str) == sezionale)
         ]
+
+        # Evita duplicati sul progressivo
         related_rows_unique = related_rows.drop_duplicates(subset=['PROGRESSIVO_RIGA'])
+
+        # Escludi eventuali righe VAT già esistenti
+        related_rows_unique = related_rows_unique[
+            related_rows_unique['COD_ART'].astype(str) != 'VAT'
+        ]
 
         try:
             sum_prezzo = related_rows_unique['PREZZO_1'].apply(safe_float).sum()
@@ -145,8 +153,6 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
 def format_output_columns(final_df):
     final_df = final_df.copy()
 
-    # Mantieni PREZZO_1 originale per tutte le righe normali.
-    # Formatta solo le righe generate dal programma.
     if 'PREZZO_1' in final_df.columns:
         def format_prezzo_row(row):
             cod_art = safe_str(row.get('COD_ART', ''))
@@ -155,12 +161,10 @@ def format_output_columns(final_df):
             if cod_art == 'VAT' or descr_art == 'Shipping Costs':
                 return format_number(row.get('PREZZO_1', ''), 2)
 
-            # Righe originali: non toccare il formato
             return safe_str(row.get('PREZZO_1', ''))
 
         final_df['PREZZO_1'] = final_df.apply(format_prezzo_row, axis=1)
 
-    # Queste invece puoi continuare a normalizzarle a 2 decimali
     if 'COSTI_SPEDIZIONE' in final_df.columns:
         final_df['COSTI_SPEDIZIONE'] = final_df['COSTI_SPEDIZIONE'].apply(
             lambda x: "" if safe_str(x) == "" else format_number(x, 2)
@@ -239,19 +243,31 @@ if uploaded_file is not None:
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
-    costs_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0]
-    unique_costs_rows = costs_rows.drop_duplicates(subset=['NUM_DOC'])
+    # ---------------------------------------------------
+    # SHIPPING:
+    # solo per documenti con COSTI_SPEDIZIONE != 0
+    # ---------------------------------------------------
+    shipping_base_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0].copy()
+    shipping_base_rows = shipping_base_rows.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE'])
 
-    adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
+    adjusted_rows = process_shipping_rows(shipping_base_rows, countrycode_dict)
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
 
-    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
+    # ---------------------------------------------------
+    # VAT:
+    # per tutti i documenti esteri validi, anche se spedizione = 0
+    # ---------------------------------------------------
+    vat_base_rows = df.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE']).copy()
+    vat_rows = process_vat_rows(vat_base_rows, countrycode_dict, df_with_shipping)
+
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
+    # Rimuovi eventuali shipping a zero
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0,00']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0.00']
 
+    # Rimozione IVA da PREZZO_1 dove richiesto
     for index, row in final_df.iterrows():
         partita_iva_is_empty = safe_str(row.get('PARTITA_IVA', '')) == ""
         nazione = safe_str(row.get('NAZIONE', ''))
@@ -282,7 +298,9 @@ if uploaded_file is not None:
 
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
 
-    final_df = final_df[~((final_df['ALI_IVA'].astype(str) == "47") & (final_df['COD_ART'] == "VAT"))]
+    final_df = final_df[
+        ~((final_df['ALI_IVA'].astype(str) == "47") & (final_df['COD_ART'] == "VAT"))
+    ]
 
     final_df = format_output_columns(final_df)
 
