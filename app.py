@@ -28,11 +28,27 @@ def format_number(value, decimals=2):
     val = safe_float(value)
     return f"{val:.{decimals}f}".replace(".", ",")
 
-def clean_dataframe(df):
+def clean_dataframe_values(df):
     df = df.copy()
-    df.columns = df.columns.str.strip()
     df = df.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
     return df
+
+def restore_original_headers(final_df, original_columns):
+    final_df = final_df.copy()
+
+    stripped_to_original = {}
+    for col in original_columns:
+        stripped = col.strip()
+        if stripped not in stripped_to_original:
+            stripped_to_original[stripped] = col
+
+    rename_map = {}
+    for col in final_df.columns:
+        if col in stripped_to_original and col != stripped_to_original[col]:
+            rename_map[col] = stripped_to_original[col]
+
+    final_df.rename(columns=rename_map, inplace=True)
+    return final_df
 
 # ---------------------------
 # Funzione per l'elaborazione delle righe delle spedizioni
@@ -99,10 +115,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             (df_original['SEZIONALE'].astype(str) == sezionale)
         ].copy()
 
-        # Evita righe VAT già eventualmente presenti
         related_rows = related_rows[related_rows['COD_ART'].astype(str) != 'VAT']
-
-        # Somma una sola volta ogni progressivo
         related_rows_unique = related_rows.drop_duplicates(subset=['PROGRESSIVO_RIGA'])
 
         try:
@@ -196,8 +209,12 @@ if uploaded_file is not None:
             keep_default_na=False,
             encoding='utf-8'
         )
-        df = clean_dataframe(df)
+
+        original_columns = list(df.columns)
+        df.columns = [col.strip() for col in df.columns]
+        df = clean_dataframe_values(df)
         df['_ORIG_ROW_ORDER'] = range(len(df))
+
     except Exception as e:
         st.error(f"Errore nella lettura del CSV: {e}")
         st.stop()
@@ -246,10 +263,7 @@ if uploaded_file is not None:
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
-    # ---------------------------------------------------
-    # SHIPPING:
-    # solo per documenti con COSTI_SPEDIZIONE != 0
-    # ---------------------------------------------------
+    # SHIPPING solo se COSTI_SPEDIZIONE != 0
     shipping_base_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0].copy()
     shipping_base_rows = shipping_base_rows.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE'])
 
@@ -258,25 +272,18 @@ if uploaded_file is not None:
 
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
 
-    # ---------------------------------------------------
-    # VAT:
-    # per tutti i documenti esteri validi, anche se spedizione = 0
-    # ---------------------------------------------------
+    # VAT anche se COSTI_SPEDIZIONE = 0
     vat_base_rows = df.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE']).copy()
     vat_rows = process_vat_rows(vat_base_rows, countrycode_dict, df_with_shipping)
     vat_rows['_ORIG_ROW_ORDER'] = pd.NA
 
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Rimuovi eventuali shipping a zero
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0,00']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0.00']
 
-    # ---------------------------------------------------
-    # Rimozione IVA da PREZZO_1 dove richiesto
-    # ma NON toccare la riga VAT
-    # ---------------------------------------------------
+    # Rimozione IVA da PREZZO_1 dove richiesto, ma non sulla riga VAT
     for index, row in final_df.iterrows():
         partita_iva_is_empty = safe_str(row.get('PARTITA_IVA', '')) == ""
         nazione = safe_str(row.get('NAZIONE', ''))
@@ -309,12 +316,8 @@ if uploaded_file is not None:
         ~((final_df['ALI_IVA'].astype(str) == "47") & (final_df['COD_ART'] == "VAT"))
     ]
 
-    # ---------------------------------------------------
-    # Ordinamento finale corretto:
-    # prodotti originali prima,
-    # SHIPPING penultima,
-    # VAT ultima
-    # ---------------------------------------------------
+    # Ordinamento finale:
+    # prodotti originali, poi SHIPPING, poi VAT
     def row_group_type(row):
         cod_art = safe_str(row.get('COD_ART', ''))
         descr_art = safe_str(row.get('DESCR_ART', ''))
@@ -368,6 +371,9 @@ if uploaded_file is not None:
 
     if '_ORIG_ROW_ORDER' in final_df.columns:
         final_df.drop(columns=['_ORIG_ROW_ORDER'], inplace=True)
+
+    # Ripristina i titoli originali ESATTI del file caricato
+    final_df = restore_original_headers(final_df, original_columns)
 
     csv = final_df.to_csv(
         sep=';',
