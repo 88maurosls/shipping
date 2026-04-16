@@ -34,6 +34,17 @@ def clean_dataframe(df):
     df = df.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
     return df
 
+def extract_base_progressivo(value):
+    s = safe_str(value)
+    if s == "":
+        return 999999.0
+
+    s = s.split("-")[0].replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return 999999.0
+
 # ---------------------------
 # Funzione per l'elaborazione delle righe delle spedizioni
 # ---------------------------
@@ -82,7 +93,6 @@ def process_shipping_rows(rows, countrycode_dict):
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
 
-    # Escludi nazione 86 e tieni solo nazioni presenti nel file countrycode
     vat_rows = vat_rows[vat_rows['NAZIONE'].astype(str) != "86"]
     vat_rows = vat_rows[vat_rows['NAZIONE'].astype(str).isin(countrycode_dict.keys())]
 
@@ -100,10 +110,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
             (df_original['SEZIONALE'].astype(str) == sezionale)
         ]
 
-        # Evita duplicati sul progressivo
         related_rows_unique = related_rows.drop_duplicates(subset=['PROGRESSIVO_RIGA'])
-
-        # Escludi eventuali righe VAT già esistenti
         related_rows_unique = related_rows_unique[
             related_rows_unique['COD_ART'].astype(str) != 'VAT'
         ]
@@ -243,58 +250,75 @@ if uploaded_file is not None:
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
-    # ---------------------------------------------------
-    # SHIPPING:
-    # solo per documenti con COSTI_SPEDIZIONE != 0
-    # ---------------------------------------------------
+    # SHIPPING solo se COSTI_SPEDIZIONE != 0
     shipping_base_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0].copy()
     shipping_base_rows = shipping_base_rows.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE'])
 
     adjusted_rows = process_shipping_rows(shipping_base_rows, countrycode_dict)
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
 
-    # ---------------------------------------------------
-    # VAT:
-    # per tutti i documenti esteri validi, anche se spedizione = 0
-    # ---------------------------------------------------
+    # VAT anche se COSTI_SPEDIZIONE = 0
     vat_base_rows = df.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE']).copy()
     vat_rows = process_vat_rows(vat_base_rows, countrycode_dict, df_with_shipping)
 
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
-    # Rimuovi eventuali shipping a zero
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0,00']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0.00']
 
-    # Rimozione IVA da PREZZO_1 dove richiesto
     for index, row in final_df.iterrows():
         partita_iva_is_empty = safe_str(row.get('PARTITA_IVA', '')) == ""
         nazione = safe_str(row.get('NAZIONE', ''))
+        cod_art = safe_str(row.get('COD_ART', ''))
+        descr_art = safe_str(row.get('DESCR_ART', ''))
 
         if nazione in countrycode_dict and partita_iva_is_empty:
+            if cod_art == "VAT":
+                continue
+
             iva_to_remove = countrycode_dict[nazione]
             try:
                 prezzo_con_iva = safe_float(row.get('PREZZO_1', ''))
                 prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
 
-                is_shipping_or_vat = (
-                    safe_str(row.get('COD_ART', '')) == 'VAT' or
-                    safe_str(row.get('DESCR_ART', '')) == 'Shipping Costs'
-                )
+                is_shipping = descr_art == 'Shipping Costs'
 
                 final_df.at[index, 'PREZZO_1'] = format_number(
                     prezzo_senza_iva,
-                    2 if is_shipping_or_vat else 3
+                    2 if is_shipping else 3
                 )
 
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da PREZZO_1 per la riga {index}: {e}")
 
-    final_df.sort_values(by=['NUM_DOC', 'PROGRESSIVO_RIGA'], inplace=True)
+    # ---------------------------
+    # Ordinamento corretto:
+    # prodotti prima, shipping poi, VAT per ultimo
+    # ---------------------------
+    def row_type_order(row):
+        cod_art = safe_str(row.get('COD_ART', ''))
+        descr_art = safe_str(row.get('DESCR_ART', ''))
 
-    new_progressivo = (final_df.groupby(['NUM_DOC', 'PROGRESSIVO_RIGA']).ngroup() + 1)
-    final_df['PROGRESSIVO_RIGA'] = new_progressivo
+        if descr_art == "Shipping Costs":
+            return 1
+        if cod_art == "VAT":
+            return 2
+        return 0
+
+    final_df['_PROG_BASE'] = final_df['PROGRESSIVO_RIGA'].apply(extract_base_progressivo)
+    final_df['_ROW_TYPE_ORDER'] = final_df.apply(row_type_order, axis=1)
+
+    final_df.sort_values(
+        by=['NUM_DOC', 'SEZIONALE', '_PROG_BASE', '_ROW_TYPE_ORDER'],
+        inplace=True,
+        kind='stable'
+    )
+
+    # Rinumera progressivo riga dentro ogni documento
+    final_df['PROGRESSIVO_RIGA'] = final_df.groupby(['NUM_DOC', 'SEZIONALE']).cumcount() + 1
+
+    final_df.drop(columns=['_PROG_BASE', '_ROW_TYPE_ORDER'], inplace=True)
 
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
 
