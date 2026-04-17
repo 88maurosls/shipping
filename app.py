@@ -52,6 +52,7 @@ def restore_original_headers(final_df, original_columns):
 
 # ---------------------------
 # Funzione per l'elaborazione delle righe delle spedizioni
+# LOGICA ORIGINALE MANTENUTA
 # ---------------------------
 
 def process_shipping_rows(rows, countrycode_dict):
@@ -93,13 +94,14 @@ def process_shipping_rows(rows, countrycode_dict):
 
 # ---------------------------
 # Funzione per l'elaborazione delle righe dell'IVA
+# LOGICA ORIGINALE MANTENUTA
 # ---------------------------
 
 def process_vat_rows(rows, countrycode_dict, df_original):
     vat_rows = rows.copy()
 
     vat_rows = vat_rows[vat_rows['NAZIONE'].astype(str) != "86"]
-    vat_rows = vat_rows[vat_rows['NAZIONE'].astype(str).isin(countrycode_dict.keys())]
+    vat_rows = vat_rows[vat_rows['NAZIONE'].isin(countrycode_dict.keys())]
 
     for index, row in vat_rows.iterrows():
         num_doc = safe_str(row.get('NUM_DOC', ''))
@@ -113,9 +115,7 @@ def process_vat_rows(rows, countrycode_dict, df_original):
         related_rows = df_original[
             (df_original['NUM_DOC'].astype(str) == num_doc) &
             (df_original['SEZIONALE'].astype(str) == sezionale)
-        ].copy()
-
-        related_rows = related_rows[related_rows['COD_ART'].astype(str) != 'VAT']
+        ]
         related_rows_unique = related_rows.drop_duplicates(subset=['PROGRESSIVO_RIGA'])
 
         try:
@@ -151,9 +151,7 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
         cod_fiscale = row.get('COD_FISCALE', '')
         if pd.isna(cod_fiscale):
             continue
-
         cod_fiscale = safe_str(cod_fiscale).upper()
-
         if cod_fiscale in no_cod_fiscale_list:
             df.at[index, 'COD_FISCALE'] = ""
         else:
@@ -273,6 +271,7 @@ if uploaded_file is not None:
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
 
     # VAT anche se COSTI_SPEDIZIONE = 0
+    # QUI CAMBIA SOLO LA BASE DI PARTENZA, NON LA FORMULA IVA
     vat_base_rows = df.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE']).copy()
     vat_rows = process_vat_rows(vat_base_rows, countrycode_dict, df_with_shipping)
     vat_rows['_ORIG_ROW_ORDER'] = pd.NA
@@ -283,28 +282,25 @@ if uploaded_file is not None:
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0,00']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0.00']
 
-    # Rimozione IVA da PREZZO_1 dove richiesto, ma non sulla riga VAT
+    # LOGICA IVA FINALE IDENTICA ALL'ORIGINALE
     for index, row in final_df.iterrows():
         partita_iva_is_empty = safe_str(row.get('PARTITA_IVA', '')) == ""
         nazione = safe_str(row.get('NAZIONE', ''))
-        cod_art = safe_str(row.get('COD_ART', ''))
-        descr_art = safe_str(row.get('DESCR_ART', ''))
 
         if nazione in countrycode_dict and partita_iva_is_empty:
-            if cod_art == "VAT":
-                continue
-
             iva_to_remove = countrycode_dict[nazione]
-
             try:
                 prezzo_con_iva = safe_float(row.get('PREZZO_1', ''))
                 prezzo_senza_iva = prezzo_con_iva / (1 + iva_to_remove / 100)
 
-                is_shipping = descr_art == 'Shipping Costs'
+                is_shipping_or_vat = (
+                    safe_str(row.get('COD_ART', '')) == 'VAT' or
+                    safe_str(row.get('DESCR_ART', '')) == 'Shipping Costs'
+                )
 
                 final_df.at[index, 'PREZZO_1'] = format_number(
                     prezzo_senza_iva,
-                    2 if is_shipping else 3
+                    2 if is_shipping_or_vat else 3
                 )
 
             except Exception as e:
@@ -372,7 +368,7 @@ if uploaded_file is not None:
     if '_ORIG_ROW_ORDER' in final_df.columns:
         final_df.drop(columns=['_ORIG_ROW_ORDER'], inplace=True)
 
-    # Ripristina i titoli originali ESATTI del file caricato
+    # Ripristina i titoli originali esatti del file caricato
     final_df = restore_original_headers(final_df, original_columns)
 
     csv = final_df.to_csv(
