@@ -261,7 +261,6 @@ if uploaded_file is not None:
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
-    # SHIPPING solo se COSTI_SPEDIZIONE != 0
     shipping_base_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0].copy()
     shipping_base_rows = shipping_base_rows.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE'])
 
@@ -270,8 +269,6 @@ if uploaded_file is not None:
 
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
 
-    # VAT anche se COSTI_SPEDIZIONE = 0
-    # QUI CAMBIA SOLO LA BASE DI PARTENZA, NON LA FORMULA IVA
     vat_base_rows = df.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE']).copy()
     vat_rows = process_vat_rows(vat_base_rows, countrycode_dict, df_with_shipping)
     vat_rows['_ORIG_ROW_ORDER'] = pd.NA
@@ -282,7 +279,6 @@ if uploaded_file is not None:
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0,00']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0.00']
 
-    # LOGICA IVA FINALE IDENTICA ALL'ORIGINALE
     for index, row in final_df.iterrows():
         partita_iva_is_empty = safe_str(row.get('PARTITA_IVA', '')) == ""
         nazione = safe_str(row.get('NAZIONE', ''))
@@ -312,8 +308,6 @@ if uploaded_file is not None:
         ~((final_df['ALI_IVA'].astype(str) == "47") & (final_df['COD_ART'] == "VAT"))
     ]
 
-    # Ordinamento finale:
-    # prodotti originali, poi SHIPPING, poi VAT
     def row_group_type(row):
         cod_art = safe_str(row.get('COD_ART', ''))
         descr_art = safe_str(row.get('DESCR_ART', ''))
@@ -356,7 +350,8 @@ if uploaded_file is not None:
         kind='stable'
     )
 
-    final_df['PROGRESSIVO_RIGA'] = final_df.groupby(['NUM_DOC', 'SEZIONALE']).cumcount() + 1
+    final_df.reset_index(drop=True, inplace=True)
+    final_df['PROGRESSIVO_RIGA'] = range(1, len(final_df) + 1)
 
     final_df.drop(
         columns=['_ROW_GROUP_TYPE', '_DOC_MAX_ORDER', '_FINAL_SORT_ORDER'],
@@ -368,7 +363,6 @@ if uploaded_file is not None:
     if '_ORIG_ROW_ORDER' in final_df.columns:
         final_df.drop(columns=['_ORIG_ROW_ORDER'], inplace=True)
 
-    # Ripristina i titoli originali esatti del file caricato
     final_df = restore_original_headers(final_df, original_columns)
 
     csv = final_df.to_csv(
