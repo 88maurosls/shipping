@@ -28,14 +28,31 @@ def format_number(value, decimals=2):
     val = safe_float(value)
     return f"{val:.{decimals}f}".replace(".", ",")
 
-def clean_dataframe(df):
+def clean_dataframe_values(df):
     df = df.copy()
-    df.columns = df.columns.str.strip()
     df = df.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
     return df
 
+def restore_original_headers(final_df, original_columns):
+    final_df = final_df.copy()
+
+    stripped_to_original = {}
+    for col in original_columns:
+        stripped = col.strip()
+        if stripped not in stripped_to_original:
+            stripped_to_original[stripped] = col
+
+    rename_map = {}
+    for col in final_df.columns:
+        if col in stripped_to_original and col != stripped_to_original[col]:
+            rename_map[col] = stripped_to_original[col]
+
+    final_df.rename(columns=rename_map, inplace=True)
+    return final_df
+
 # ---------------------------
 # Funzione per l'elaborazione delle righe delle spedizioni
+# LOGICA ORIGINALE MANTENUTA
 # ---------------------------
 
 def process_shipping_rows(rows, countrycode_dict):
@@ -77,6 +94,7 @@ def process_shipping_rows(rows, countrycode_dict):
 
 # ---------------------------
 # Funzione per l'elaborazione delle righe dell'IVA
+# LOGICA ORIGINALE MANTENUTA
 # ---------------------------
 
 def process_vat_rows(rows, countrycode_dict, df_original):
@@ -127,6 +145,8 @@ def process_vat_rows(rows, countrycode_dict, df_original):
 # ---------------------------
 
 def remove_cod_fiscale(df, no_cod_fiscale_list):
+    df = df.copy()
+
     for index, row in df.iterrows():
         cod_fiscale = row.get('COD_FISCALE', '')
         if pd.isna(cod_fiscale):
@@ -136,6 +156,7 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
             df.at[index, 'COD_FISCALE'] = ""
         else:
             df.at[index, 'COD_FISCALE'] = cod_fiscale
+
     return df
 
 # ---------------------------
@@ -145,8 +166,6 @@ def remove_cod_fiscale(df, no_cod_fiscale_list):
 def format_output_columns(final_df):
     final_df = final_df.copy()
 
-    # Mantieni PREZZO_1 originale per tutte le righe normali.
-    # Formatta solo le righe generate dal programma.
     if 'PREZZO_1' in final_df.columns:
         def format_prezzo_row(row):
             cod_art = safe_str(row.get('COD_ART', ''))
@@ -155,12 +174,10 @@ def format_output_columns(final_df):
             if cod_art == 'VAT' or descr_art == 'Shipping Costs':
                 return format_number(row.get('PREZZO_1', ''), 2)
 
-            # Righe originali: non toccare il formato
             return safe_str(row.get('PREZZO_1', ''))
 
         final_df['PREZZO_1'] = final_df.apply(format_prezzo_row, axis=1)
 
-    # Queste invece puoi continuare a normalizzarle a 2 decimali
     if 'COSTI_SPEDIZIONE' in final_df.columns:
         final_df['COSTI_SPEDIZIONE'] = final_df['COSTI_SPEDIZIONE'].apply(
             lambda x: "" if safe_str(x) == "" else format_number(x, 2)
@@ -190,7 +207,12 @@ if uploaded_file is not None:
             keep_default_na=False,
             encoding='utf-8'
         )
-        df = clean_dataframe(df)
+
+        original_columns = list(df.columns)
+        df.columns = [col.strip() for col in df.columns]
+        df = clean_dataframe_values(df)
+        df['_ORIG_ROW_ORDER'] = range(len(df))
+
     except Exception as e:
         st.error(f"Errore nella lettura del CSV: {e}")
         st.stop()
@@ -235,23 +257,32 @@ if uploaded_file is not None:
 
     if selected_rags_upper:
         selected_rags = [name_mapping[rag] for rag in selected_rags_upper]
-        df = df[df['RAG_SOCIALE'].isin(selected_rags)]
+        df = df[df['RAG_SOCIALE'].isin(selected_rags)].copy()
     else:
         st.write("Nessuna selezione effettuata, visualizzati tutti i dati.")
 
-    costs_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0]
-    unique_costs_rows = costs_rows.drop_duplicates(subset=['NUM_DOC'])
+    # SHIPPING solo se COSTI_SPEDIZIONE != 0
+    shipping_base_rows = df[df['COSTI_SPEDIZIONE'].apply(safe_float) != 0].copy()
+    shipping_base_rows = shipping_base_rows.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE'])
 
-    adjusted_rows = process_shipping_rows(unique_costs_rows, countrycode_dict)
+    adjusted_rows = process_shipping_rows(shipping_base_rows, countrycode_dict)
+    adjusted_rows['_ORIG_ROW_ORDER'] = pd.NA
+
     df_with_shipping = pd.concat([df, adjusted_rows], ignore_index=True)
 
-    vat_rows = process_vat_rows(unique_costs_rows, countrycode_dict, df_with_shipping)
+    # VAT anche se COSTI_SPEDIZIONE = 0
+    # QUI CAMBIA SOLO LA BASE DI PARTENZA, NON LA FORMULA IVA
+    vat_base_rows = df.drop_duplicates(subset=['NUM_DOC', 'SEZIONALE']).copy()
+    vat_rows = process_vat_rows(vat_base_rows, countrycode_dict, df_with_shipping)
+    vat_rows['_ORIG_ROW_ORDER'] = pd.NA
+
     final_df = pd.concat([df_with_shipping, vat_rows], ignore_index=True)
 
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0,00']
     final_df = final_df[final_df['COD_ART'] != 'SHIPPINGCOSTS0.00']
 
+    # LOGICA IVA FINALE IDENTICA ALL'ORIGINALE
     for index, row in final_df.iterrows():
         partita_iva_is_empty = safe_str(row.get('PARTITA_IVA', '')) == ""
         nazione = safe_str(row.get('NAZIONE', ''))
@@ -275,16 +306,70 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Errore nella rimozione dell'IVA da PREZZO_1 per la riga {index}: {e}")
 
-    final_df.sort_values(by=['NUM_DOC', 'PROGRESSIVO_RIGA'], inplace=True)
-
-    new_progressivo = (final_df.groupby(['NUM_DOC', 'PROGRESSIVO_RIGA']).ngroup() + 1)
-    final_df['PROGRESSIVO_RIGA'] = new_progressivo
-
     final_df = remove_cod_fiscale(final_df, no_cod_fiscale_list)
 
-    final_df = final_df[~((final_df['ALI_IVA'].astype(str) == "47") & (final_df['COD_ART'] == "VAT"))]
+    final_df = final_df[
+        ~((final_df['ALI_IVA'].astype(str) == "47") & (final_df['COD_ART'] == "VAT"))
+    ]
+
+    # Ordinamento finale:
+    # prodotti originali, poi SHIPPING, poi VAT
+    def row_group_type(row):
+        cod_art = safe_str(row.get('COD_ART', ''))
+        descr_art = safe_str(row.get('DESCR_ART', ''))
+
+        if cod_art == "VAT":
+            return "VAT"
+        if descr_art == "Shipping Costs":
+            return "SHIPPING"
+        return "PRODUCT"
+
+    final_df['_ROW_GROUP_TYPE'] = final_df.apply(row_group_type, axis=1)
+
+    doc_max_order = (
+        final_df[final_df['_ROW_GROUP_TYPE'] == 'PRODUCT']
+        .groupby(['NUM_DOC', 'SEZIONALE'])['_ORIG_ROW_ORDER']
+        .max()
+        .reset_index()
+        .rename(columns={'_ORIG_ROW_ORDER': '_DOC_MAX_ORDER'})
+    )
+
+    final_df = final_df.merge(doc_max_order, on=['NUM_DOC', 'SEZIONALE'], how='left')
+    final_df['_DOC_MAX_ORDER'] = final_df['_DOC_MAX_ORDER'].fillna(0)
+
+    def final_sort_order(row):
+        row_type = row['_ROW_GROUP_TYPE']
+
+        if row_type == 'PRODUCT':
+            return row['_ORIG_ROW_ORDER']
+        if row_type == 'SHIPPING':
+            return row['_DOC_MAX_ORDER'] + 1
+        if row_type == 'VAT':
+            return row['_DOC_MAX_ORDER'] + 2
+        return row['_DOC_MAX_ORDER'] + 99
+
+    final_df['_FINAL_SORT_ORDER'] = final_df.apply(final_sort_order, axis=1)
+
+    final_df.sort_values(
+        by=['NUM_DOC', 'SEZIONALE', '_FINAL_SORT_ORDER'],
+        inplace=True,
+        kind='stable'
+    )
+
+    final_df['PROGRESSIVO_RIGA'] = final_df.groupby(['NUM_DOC', 'SEZIONALE']).cumcount() + 1
+
+    final_df.drop(
+        columns=['_ROW_GROUP_TYPE', '_DOC_MAX_ORDER', '_FINAL_SORT_ORDER'],
+        inplace=True
+    )
 
     final_df = format_output_columns(final_df)
+
+    if '_ORIG_ROW_ORDER' in final_df.columns:
+        final_df.drop(columns=['_ORIG_ROW_ORDER'], inplace=True)
+
+    # Ripristina i titoli originali esatti del file caricato
+    final_df = restore_original_headers(final_df, original_columns)
 
     csv = final_df.to_csv(
         sep=';',
